@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   WebServ.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/14 19:03:57 by aistok            #+#    #+#             */
-/*   Updated: 2026/04/07 20:50:12 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/04 19:43:03 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -134,6 +134,19 @@ void WebServ::run(void)
 	}
 }
 
+/***
+            if (isCGISocket(fd)) {
+                if (_poll_fds[i].revents & (POLLIN | POLLHUP)) {
+                    handleCGIOutput(fd);
+                }
+
+                if (_poll_fds[i].revents & POLLERR) {
+                    std::cout << "CGI fd: " << fd << "removed" << std::endl;
+                    cleanupCGI(fd);
+                }
+                continue;
+            }
+***/
 
 void WebServ::_addNewFdtoPool(int newFd, short events)
 {
@@ -383,3 +396,130 @@ void WebServ::_updateEvent(size_t index, short enable, short disable)
 	// Turn OFF the bits you don't want
 	_pollFds[index].events &= ~disable;
 }
+
+
+
+bool Server::isCGISocket(int fd) const {
+    return (_cgi_processes.find(fd) != _cgi_processes.end());
+}
+
+bool Server::executeCGI(Client& client, const std::string& cgi_path, 
+                         const std::string& script_path, const LocationConfig& location) {
+    (void)location;
+
+    CGI cgi(cgi_path, script_path, client.getRequest());
+
+    //Start non-blocking CGI execution.
+    std::pair<pid_t, int> res = cgi.executeNonBlocking();
+
+    if (res.first == -1) {
+        return (false); //Fork failed.
+    }
+
+    //We need to store CGI process info
+    CGIProcess process;
+    process.pid = res.first;
+    process.stdout_fd = res.second;
+    process.client_fd = client.getFd();
+    process.start_time = time(NULL);
+
+    _cgi_processes[res.second] = process;
+    
+    //We set client state to waiting state i.e: not reading or writing.
+    client.setState(CLIENT_PROCESSING);
+
+    return (true);
+}
+
+void Server::handleCGIOutput(int cgi_fd) {
+    std::map<int, CGIProcess>::iterator it = _cgi_processes.find(cgi_fd);
+    if (it == _cgi_processes.end()) {
+        return;
+    }
+    
+    CGIProcess& cgi = it->second;
+    
+    char buffer[8192];
+    ssize_t bytes_read = read(cgi_fd, buffer, sizeof(buffer));
+    
+    if (bytes_read > 0) {
+        cgi.output.append(buffer, bytes_read);
+    } else if (bytes_read == 0) {
+        // EOF - CGI finished
+        close(cgi_fd);
+        
+        // Wait for child process (non-blocking)
+        int status;
+        waitpid(cgi.pid, &status, WNOHANG);
+        
+        // Find client and send response
+        std::map<int, Client*>::iterator client_it = _clients.find(cgi.client_fd);
+        if (client_it != _clients.end()) {
+            Client* client = client_it->second;
+            
+            // Check if CGI produced any output
+            if (cgi.output.empty()) {
+                // No output - CGI likely failed (execve error, script not found, etc.)
+                std::cout << "CGI produced no output - likely execution failed" << std::endl;
+                client->getResponse() = HttpResponse::errorResponse(500);
+            } else {                
+                // Parse CGI output into response
+                client->getResponse() = CGI::parseCGIOutput(cgi.output);
+            }
+            
+            client->setState(CLIENT_WRITING);
+            client->prepareResponse();
+        }
+        
+        // Remove CGI process
+        _cgi_processes.erase(it);
+    } else {
+        // Error reading
+        cleanupCGI(cgi_fd);
+    }
+}
+
+void Server::checkCGITimeouts() {
+    std::vector<int> to_cleanup;
+    time_t now = time(NULL);
+    const int CGI_TIMEOUT = 30; //30secs
+
+    for (std::map<int, CGIProcess>::iterator it = _cgi_processes.begin();
+         it != _cgi_processes.end(); ++it) {
+        if (now - it->second.start_time > CGI_TIMEOUT) {
+            to_cleanup.push_back(it->first);
+        }
+    }
+
+    for (size_t i = 0; i < to_cleanup.size(); ++i) {
+        std::cout << "CGI timeout: killing process" << std::endl;
+        cleanupCGI(to_cleanup[i]);
+    }
+}
+
+void Server::cleanupCGI(int cgi_fd) {
+    std::map<int, CGIProcess>::iterator it = _cgi_processes.find(cgi_fd);
+    if (it == _cgi_processes.end()) {
+        return;
+    }
+
+    CGIProcess& cgi = it->second;
+
+    //Kill CGI process
+    kill(cgi.pid, SIGKILL);
+    waitpid(cgi.pid, NULL, WNOHANG);
+
+    //closing pipe
+    close(cgi_fd);
+
+    //Send error to client
+    std::map<int, Client*>::iterator client_it = _clients.find(cgi.client_fd);
+    if (client_it != _clients.end()) {
+        client_it->second->getResponse() = HttpResponse::errorResponse(500);
+        client_it->second->setState(CLIENT_WRITING);
+        client_it->second->prepareResponse();
+    }
+
+    _cgi_processes.erase(it);
+}
+
