@@ -6,7 +6,7 @@
 #    By: aistok <aistok@student.42london.com>       +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/01/14 18:42:19 by aistok            #+#    #+#              #
-#    Updated: 2026/04/09 23:22:05 by aistok           ###   ########.fr        #
+#    Updated: 2026/05/10 14:19:36 by aistok           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -44,6 +44,7 @@ all: $(NAME)
 
 $(NAME): $(INC_FILES) $(OBJ_FILES) | $(BIN_DIR)
 	$(CC) $(CFLAGS) $(DFLAGS) -I$(INC_DIR) $(OBJ_FILES) -o $@
+	./tests/prep_www_for_delete_testing.sh
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(INC_FILES) | $(OBJ_DIR)
 	$(CC) $(CFLAGS) $(DFLAGS) -I$(INC_DIR) -c $< -o $@
@@ -73,6 +74,7 @@ clean:
 
 fclean: clean
 	$(RM) $(BIN_DIR)
+	./tests/prep_www_for_delete_testing.sh fclean
 
 re: fclean all
 
