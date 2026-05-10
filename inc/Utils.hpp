@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Utils.hpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/26 23:56:58 by mosokina          #+#    #+#             */
-/*   Updated: 2026/05/06 12:24:09 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/05/09 09:20:13 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -97,6 +97,7 @@ public:
     static std::string getFileContent(const std::string &filename);
     static std::vector<fsItem> getDirectoryList(const std::string &path);
     static bool isReadable(const std::string &pathOnServer);
+    static bool isWritable(const std::string &pathOnServer);
 
     /*Path operations*/
     static std::string joinPath(const std::string& base, const std::string& relative);

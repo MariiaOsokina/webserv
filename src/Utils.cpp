@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/25 11:32:29 by mosokina          #+#    #+#             */
-/*   Updated: 2026/05/06 16:53:41 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/05/09 14:54:19 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -248,6 +248,11 @@ bool Utils::fileExists(const std::string &path)
 	return (stat(path.c_str(), &st) == 0);
 }
 
+bool Utils::deleteFile(const std::string &path)
+{
+	return (unlink(path.c_str()) == 0);
+}
+
 /*Number conversions*/
 int Utils::toInt(const std::string &str)
 {
@@ -338,6 +343,26 @@ bool Utils::isReadable(const std::string &pathOnServer)
 
 	else // checking others permissions
 		return (st.st_mode & S_IROTH) != 0;
+}
+
+bool Utils::isWritable(const std::string &pathOnServer)
+{
+	struct stat st;
+
+	if (stat(pathOnServer.c_str(), &st) != 0)
+		return false; // error accessing file
+
+	uid_t uid = getuid();
+	gid_t gid = getgid();
+
+	if (st.st_uid == uid) // checing owner permissions
+		return (st.st_mode & S_IWUSR) != 0;
+
+	else if (st.st_gid == gid) // checking group permissions
+		return (st.st_mode & S_IWGRP) != 0;
+
+	else // checking others permissions
+		return (st.st_mode & S_IWOTH) != 0;
 }
 
 
