@@ -30,6 +30,7 @@
 	<div>
 		<button id="btn_readme">readme.md</button>
 		<button id="btn_upload_file">Upload a file</button>
+		<button id="btn_simple_post_request">Simple POST request</button>
 		<button id="btn_list_files">List /files</button>
 		<button id="btn_list_files_delete_allowed">List /delete_test</button>
 		<button id="btn_list_files_delete_allowed_reset">Reset /delete_test</button>
@@ -44,12 +45,6 @@
 
 		var iframe = document.getElementById('iframe');
 
-		//iframe.onload = function () {
-		//	var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-		//	var height = iframeDoc.body.scrollHeight;
-		//	iframe.style.height = height;
-		//};
-
 		document.getElementById('btn_readme').addEventListener('click', function () {
 			iframe.src = 'index_readme.html'
 		});
@@ -59,6 +54,9 @@
 				iframeDoc.getElementById('fileInput').click();
 			}
 			iframe.src = 'index_upload.html';
+		});
+		document.getElementById('btn_simple_post_request').addEventListener('click', function () {
+			iframe.src = '/index_simple_post_request.html'
 		});
 		document.getElementById('btn_list_files').addEventListener('click', function () {
 			iframe.src = '/files'

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>File Upload</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      background-color: #f0f0f0;
+    }
+
+    #uploadBtn,
+    #submitBtn {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #progress {
+      margin-top: 20px;
+    }
+
+    #info {
+      margin-top: 20px;
+      display: block;
+      background-color: #f0f0f0;
+    }
+
+    .error {
+      color: #721c24;
+      background-color: #f8d7da;
+    }
+
+    .success {
+      color: #155724;
+      background-color: #d4edda;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h2>Simple POST request demo</h2>
+
+  <form id="uploadForm">
+    <label for="message">Enter your message:</label>
+    <br>
+    <textarea id="message" name="message" rows="4" cols="50" placeholder="Type your text here..." required></textarea>
+    <br><br>
+    <button id="submitBtn" type="submit">Send Data</button>
+  </form>
+
+  <!-- a way to show some progress/message -->
+  <div id="progress"></div>
+
+  <!-- to display link to uploaded file -->
+  <div id="info"></div>
+
+  <script>
+    document.getElementById('uploadForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+
+      const progressDiv = document.getElementById('progress');
+      const infoDiv = document.getElementById('info');
+
+      progressDiv.innerText = 'Sending data...';
+
+      const formData = new FormData(this);
+      const urlEncodedData = new URLSearchParams(formData);
+
+      try {
+
+        const response = await fetch('/upload', {
+          method: 'POST',
+          headers: {
+            // Explicitly sets the content type to a simple form post
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          // Pass the URLSearchParams object directly as the body
+          body: urlEncodedData
+        });
+
+        // Read the server's text response
+        const resultText = await response.text();
+
+        if (response.status >= 200 && response.status < 300) {
+          progressDiv.className = "success"
+          progressDiv.innerHTML = "Upload successful";
+          infoDiv.innerText = `${resultText}`;
+        } else {
+          progressDiv.className = "error"
+          progressDiv.innerHTML = "Server Error, upload failed";
+          infoDiv.innerText = `${resultText}`;
+        }
+
+      } catch (error) {
+
+        progressDiv.className = "error"
+        progressDiv.innerHTML = "Network Error";
+        infoDiv.innerText = `${error.message}`;
+
+      }
+    });
+  </script>
+
+</body>
+
+</html>
