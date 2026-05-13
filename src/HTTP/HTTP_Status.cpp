@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/12 14:39:13 by aistok            #+#    #+#             */
-/*   Updated: 2026/04/07 20:22:35 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/13 18:41:28 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -162,4 +162,9 @@ const HTTP_StatusPair *HTTP_Status::all()
 int HTTP_Status::count()
 {
 	return _count;
+}
+
+bool HTTP_StatusPair::operator==(const HTTP_StatusPair &other) const
+{
+	return (this->code == other.code);
 }

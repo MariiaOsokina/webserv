@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/12 14:37:18 by aistok            #+#    #+#             */
-/*   Updated: 2026/04/07 20:22:23 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/13 18:40:38 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,8 @@ typedef struct HTTP_StatusPair
 {
 	int code;
 	const char *text;
+
+	bool operator==(const HTTP_StatusPair &other) const;
 } HTTP_StatusPair;
 
 class HTTP_Status
