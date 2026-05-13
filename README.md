@@ -38,6 +38,18 @@ Test from web browser:
 
    To make it easier.
 
+3. in order to be able to test the DELETE requests, the folder
+
+   www/delete_test
+
+   has some files and folders READ ONLY (ex. chmod 444 file,
+   or chmod 555 file, etc); to clean these up easily, run
+
+   make fclean
+
+   which will call a shell script that will change the
+   access rights and deletes the www/delete_test if needed.
+
 ## Resources
 
 - HTTP 1.0 RFC:
