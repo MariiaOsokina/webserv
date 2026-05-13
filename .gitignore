@@ -4,4 +4,9 @@ obj
 webserve
 
 www/delete_test
-www/uploads
+www/uploads/*
+!www/uploads/.gitkeep
+
+www_42tester/uploads/*
+!www_42tester/uploads/.gitkeep
+

@@ -32,6 +32,12 @@ Test from web browser:
 
    The page should load, allowing some manual testing.
 
+2. for manual file uploads, there are a few files in
+
+   ./tests/files_to_upload
+
+   To make it easier.
+
 ## Resources
 
 - HTTP 1.0 RFC:
