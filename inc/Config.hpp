@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/11 17:53:52 by aaladeok          #+#    #+#             */
-/*   Updated: 2026/05/13 14:57:01 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/14 21:39:49 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,7 +47,7 @@ struct ServerConfig
     std::string root;
     std::string index;
 
-    ServerConfig() : host("localhost"), client_max_body_size(1048576) {}//1mb default..
+    ServerConfig() : host(""), client_max_body_size(0) {}//1mb default..
 };
 
 class ConfigException : public std::exception {
