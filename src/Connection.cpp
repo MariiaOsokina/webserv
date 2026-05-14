@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/11 12:49:10 by mosokina          #+#    #+#             */
-/*   Updated: 2026/05/12 09:35:40 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/14 21:37:01 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -244,7 +244,7 @@ void Connection::_setupBodyReading()
     {
         _expectedBodySize = std::strtoul(itCL->second.c_str(), NULL, 10);        
         size_t maxBodySize = _listener->getConfig().client_max_body_size;
-        if (_expectedBodySize > maxBodySize) {
+        if (maxBodySize > 0 && _expectedBodySize > maxBodySize) {
             std::cout << "[WebServ] Payload too large (Content-Length): " << _expectedBodySize << std::endl;
             _request.setParseStatus(HTTP_Request::CONTENT_TOO_LARGE);
             _state = ERROR;
@@ -329,7 +329,7 @@ void Connection::_handleChunkedBody() {
 
 		// 3. Overflow and Limit Check for Payload Size
 		size_t maxBodySize = _listener->getConfig().client_max_body_size;
-		if (chunkSize > maxBodySize || _chunkedAccumulator.size() + chunkSize > maxBodySize)
+		if (maxBodySize > 0 && (chunkSize > maxBodySize || _chunkedAccumulator.size() + chunkSize > maxBodySize))
 		{
 			std::cout << "[WebServ] Payload too large (Chunked stream exceeded limit)" << std::endl;
 			_request.setParseStatus(HTTP_Request::CONTENT_TOO_LARGE);
