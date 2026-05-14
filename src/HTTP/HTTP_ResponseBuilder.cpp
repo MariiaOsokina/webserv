@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/20 10:48:39 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/13 21:53:22 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/14 21:58:16 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -165,6 +165,9 @@ void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 		setResponse(response, HTTP_Status::NOT_FOUND);
 		return;
 	}
+
+	std::cout << "[DEBUG] _serverConfig.client_max_body_size --> " << _serverConfig.client_max_body_size << std::endl;
+	std::cout << "[DEBUG] _location.client_max_body_size --> " << _location.client_max_body_size << std::endl;
 
 	if (response.isCGIGenerated())
 	{
@@ -333,7 +336,7 @@ void HTTP_ResponseBuilder::build_response_for_POST(
 	std::string errorMsg = "";
 
 	if (_location.upload_path.empty())
-		errorMsg = _location.upload_path + " is empty!";
+		errorMsg = "_location.upload_path is empty!";
 
 	else if (getPathType(_location.upload_path) != PATH_DIRECTORY)
 		errorMsg = _location.upload_path + " has to be a directory!";
