@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/11 17:53:52 by aaladeok          #+#    #+#             */
-/*   Updated: 2026/05/13 15:04:18 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/14 22:30:23 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -151,7 +151,7 @@ void Config::validatePort(int port) {
 }
 
 void Config::validateMethod(const std::string& method) {
-    if (method != "GET" && method != "POST" && method != "DELETE") {
+    if (method != "HEAD" && method != "GET" && method != "POST" && method != "DELETE") {
         throw ConfigException("Invalid HTTP method: " + method + " (allowed: GET, POST, DELETE)", _current_line);
     }
 }
