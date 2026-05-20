@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/26 23:56:58 by mosokina          #+#    #+#             */
-/*   Updated: 2026/05/13 02:58:44 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/20 13:10:13 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -90,6 +90,7 @@ public:
                                   const std::string &to);
     static std::string removeQuote(const std::string &value, const char quote);
 	static std::size_t countOccurrence(const std::string &haystack, const std::string &needle);
+    static std::string substrUpTo(const std::string &str, const std::string &needle);
 
     /*File operations*/
     static bool fileExists(const std::string &path);

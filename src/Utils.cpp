@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/25 11:32:29 by mosokina          #+#    #+#             */
-/*   Updated: 2026/05/13 09:22:16 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/20 12:58:50 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -261,6 +261,15 @@ std::size_t Utils::countOccurrence(const std::string &haystack, const std::strin
 	}
 
 	return occurrence;
+}
+
+std::string Utils::substrUpTo(const std::string &str, const std::string &needle)
+{
+	size_t needle_pos = str.find(needle);
+	if (needle_pos == std::string::npos)
+		return ("");
+
+	return (str.substr(0, needle_pos));
 }
 
 bool Utils::fileExists(const std::string &path)

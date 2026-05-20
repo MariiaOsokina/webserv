@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   WebServ.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/14 19:03:57 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/08 01:45:09 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/05/20 13:00:37 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -337,7 +337,8 @@ void WebServ::_sendResponse(size_t *index)
 	while (requestsProcessed < 10) // Limit to 10 requests per poll trigger
 	{
 		bool finished = conn->handleWrite();
-		std::cout << "[DEBUG] Sending Response Body: " << conn->getRawResponse().substr(0, 15) << "..." << std::endl;	
+		//std::cout << "[DEBUG] Sending Response Body: " << conn->getRawResponse().substr(0, 15) << "..." << std::endl;	
+        std::cout << "[DEBUG] Sending Response Body: " << Utils::substrUpTo(conn->getRawResponse(), CRLF) << std::endl; // AI: added for degubbing purposes, to see response header clearly
 		if (finished)
 		{
 			requestsProcessed++;

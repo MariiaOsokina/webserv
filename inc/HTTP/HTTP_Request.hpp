@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/13 14:35:11 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/20 13:03:44 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -77,7 +77,7 @@ public:
 	const std::string &getVersion() const;
 	const std::map<std::string, std::string, CaseInsensitiveCompare> getHeaders() const;
 	const std::string &getBody() const;
-	std::string serialize();
+	std::string serialize() const;
 	
 	bool isMultipartRequest() const;
 	const std::string getMultipartBoundary() const;
@@ -88,6 +88,7 @@ public:
 	void setParseStatus(ParseStatus status);
 	HTTP_Request getDisplayFriendlyRequest();
 	bool hasHeader(const std::string &fieldName) const;
+	void dumpToFile(const std::string &filename) const;
 
 protected:
 	// ...

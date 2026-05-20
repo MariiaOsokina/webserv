@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/13 03:25:34 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/20 13:04:19 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -97,7 +97,7 @@ void HTTP_Response::setStatus(const HTTP_StatusPair &status)
 	_status = status;
 }
 
-std::string HTTP_Response::serialize()
+std::string HTTP_Response::serialize() const
 {
 	std::ostringstream oss(std::ios::binary);
 	oss << *this;
@@ -201,6 +201,13 @@ void HTTP_Response::setScriptPath(const std::string &path) {
 
 std::string HTTP_Response::getScriptPath() const {
     return _scriptPath;
+}
+
+void HTTP_Response::dumpToFile(const std::string &filename) const
+{
+	std::string filename_ok = Utils::getNextAvailableFilename(filename);
+	Utils::writeStringToFile(filename_ok, serialize());
+	std::cout << "[DEBUG] Response saved/dumped to " << filename_ok << std::endl;
 }
 
 /*
