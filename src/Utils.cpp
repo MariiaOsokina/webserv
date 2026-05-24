@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/25 11:32:29 by mosokina          #+#    #+#             */
-/*   Updated: 2026/05/20 12:58:50 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/24 11:13:04 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -414,7 +414,7 @@ std::string Utils::getNextAvailableFilename(const std::string &file_name_with_ex
 			break;
 
 		ss.str("");
-		ss << file_dir << '/' << file_name << counter << file_ext;
+		ss << file_dir << '/' << counter << "_" << file_name << file_ext;
 		filename = ss.str();
 
 		++counter;
@@ -444,6 +444,17 @@ std::string Utils::getcwd()
 		return "";
 }
 
+std::string Utils::dumpToFile(const std::string &filename, const std::string &data)
+{
+	std::string filename_to_check;
+	filename_to_check.append(FILE_DUMPS_DIR).append("/").append(filename);
+
+	std::string filename_ok = Utils::getNextAvailableFilename(filename_to_check);
+	Utils::writeStringToFile(filename_ok, data);
+
+	return (filename_ok);
+}
+
 // returns extension with the dot, ex: .txt
 std::string Utils::getExtension(const std::string& path) {
     size_t dot = path.find_last_of('.');
@@ -466,15 +477,40 @@ std::string Utils::joinPath(const std::string& base, const std::string& relative
     if (base[base.length() - 1] == '/') {
         if (relative[0] == '/') {
             return (base + relative.substr(1));
-        }
+        } else if (Utils::startsWith(relative, "./")) { // AI: fix
+			return (base + relative.substr(2));
+		}
         return (base + relative);
     
     } else {
         if (relative[0] == '/') {
             return (base + relative);
-        }
+        } else if (Utils::startsWith(relative, "./")) { // AI: fix
+			return (base + "/" + relative.substr(2));
+		}
         return (base + "/" + relative);
     }
+}
+
+// will append the relative path to the current working directory
+//
+// NOTE: it is important, that the current working directory and the
+//       relative path match;
+//
+//       ex: if the relative path is a valid path in the current
+//           working directory and the directory is changed to some
+//           other directory, this function will return an eronneous
+//           absolute path!
+std::string Utils::getAbsolutePath(const std::string &relativePath)
+{
+	if (relativePath[0] != '/' ||
+	    Utils::startsWith(relativePath, "./"))
+	{
+		std::string cwd = Utils::getcwd();
+		return (Utils::joinPath(cwd, relativePath));
+	}
+
+	return (relativePath);
 }
 
 std::string Utils::normalizePath(const std::string& path) {

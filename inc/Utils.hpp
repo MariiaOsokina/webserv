@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/26 23:56:58 by mosokina          #+#    #+#             */
-/*   Updated: 2026/05/20 13:10:13 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/24 10:33:46 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include "WebServMacros.hpp"
 
 template <typename T>
 std::string toString(const T &value)
@@ -104,9 +106,11 @@ public:
     static std::string getNextAvailableFilename(const std::string &file_name_with_extension);
     static bool writeStringToFile(const std::string &filename_with_extension, const std::string &data);
 	static std::string getcwd();
+    static std::string dumpToFile(const std::string &filename, const std::string &data);
 
     /*Path operations*/
     static std::string joinPath(const std::string& base, const std::string& relative);
+    static std::string getAbsolutePath(const std::string& relativePath);
     static std::string normalizePath(const std::string& path);
     static std::string getExtension(const std::string& path);
     static std::string getFileName(const std::string& path);

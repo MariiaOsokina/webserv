@@ -6,14 +6,13 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/21 00:32:21 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/12 03:03:42 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/23 18:55:19 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef HTTP_DEFINES_HPP
 #define HTTP_DEFINES_HPP
 
-#define WEBSERV_NAME "miniMAA"
 #define CR "\r"
 #define LF "\n"
 #define CRLF CR LF

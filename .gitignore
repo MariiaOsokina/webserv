@@ -10,6 +10,9 @@ www/uploads/*
 www_42tester/uploads/*
 !www_42tester/uploads/.gitkeep
 
+file_dumps/*
+!file_dumps/.gitkeep
+
 # these are some debug filedumps of requests and responses the server receives
 request_cgi*
 response_cgi*
