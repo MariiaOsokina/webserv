@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/11 12:49:10 by mosokina          #+#    #+#             */
-/*   Updated: 2026/05/14 21:37:01 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/24 11:20:42 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -363,4 +363,9 @@ bool Connection::_isValidHex(const std::string& s) const
 		}
 	}
 	return true;
+}
+
+bool Connection::isChunked() const
+{
+	return (_isChunked);
 }
