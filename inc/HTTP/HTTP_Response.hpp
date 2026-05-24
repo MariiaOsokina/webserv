@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/20 13:04:11 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/22 10:51:28 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,6 +40,7 @@ public:
 
 	std::string serialize() const;
 	void setContent(const std::string &text);
+	void appendToContent(const std::string &data);
 	
 	void setHeadersOnly(const bool value);
 	bool isHeadersOnly();
@@ -57,7 +58,6 @@ public:
 	void dumpToFile(const std::string &filename) const;
 
 	//void setBody(std::string &data, size_t len);
-	//void appendToBody(std::string &data, size_t len, bool isFinalAppend = false);
 
 	// friend is needed for the operator<< to be able to access
 	// the status and version private variables

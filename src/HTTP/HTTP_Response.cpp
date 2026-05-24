@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/20 13:04:19 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/22 13:21:54 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -113,6 +113,15 @@ void HTTP_Response::setContent(const std::string &text)
 	}
 }
 
+void HTTP_Response::appendToContent(const std::string &data)
+{
+	if (!_isHEADresponse)
+	{
+		_body += data;
+		_headers[HTTP_FieldName::CONTENT_LENGTH] = ::toString(data.length());
+	}
+}
+
 void HTTP_Response::setHeadersOnly(const bool value)
 {
 	_isHEADresponse = value;
@@ -205,9 +214,8 @@ std::string HTTP_Response::getScriptPath() const {
 
 void HTTP_Response::dumpToFile(const std::string &filename) const
 {
-	std::string filename_ok = Utils::getNextAvailableFilename(filename);
-	Utils::writeStringToFile(filename_ok, serialize());
-	std::cout << "[DEBUG] Response saved/dumped to " << filename_ok << std::endl;
+	std::string filename_dumped_to = Utils::dumpToFile(filename, serialize());
+	std::cout << "[DEBUG] Response saved/dumped to " << filename_dumped_to << std::endl;
 }
 
 /*
