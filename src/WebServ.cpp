@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/14 19:03:57 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/20 14:24:13 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/24 11:18:43 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -526,24 +526,18 @@ void WebServ::_handleCGIOutput(size_t *index) {
             
             // Check if CGI produced any output
             if (cgi.output.empty()) {
-                //std::cout << "[WebServ] CGI produced no output - likely execution failed" << std::endl;
-                //conn->getResponse().setStatus(HTTP_Status::INTERNAL_SERVER_ERROR);
-                //conn->setState(Connection::ERROR);
-                //due to the above, we would get:
-                //Test GET http://localhost:8080/directory/youpi.bla
-                //FATAL ERROR ON LAST TEST: bad status code
-                conn->getResponse().setStatus(HTTP_Status::OK);
-                conn->getResponse().setContent("");
-                conn->getRequest().dumpToFile("request_cgi");
-                conn->getResponse().dumpToFile("response_cgi");
-                conn->setState(Connection::REQUEST_READY);
+                std::cout << "[WebServ] CGI produced no output - likely execution failed" << std::endl;
+                conn->getResponse().setStatus(HTTP_Status::INTERNAL_SERVER_ERROR);
+                conn->setState(Connection::ERROR);
             } else {                
                 // Parse CGI output into response
                 conn->getResponse() = CGI::parseCGIOutput(cgi.output);
-                //conn->getResponse().dumpToFile("response_partial_cgi");
                 conn->setState(Connection::REQUEST_READY);
             }
-            
+
+            conn->getRequest().dumpToFile("request_cgi"); // AI: DEBUGGING
+            conn->getResponse().dumpToFile("response_cgi"); // AI: DEBUGGING
+
             conn->prepareResponse();
 
             // Find client/connection in poll array and switch them to POLLOUT
