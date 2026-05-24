@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/20 10:48:39 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/13 17:28:48 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/24 14:12:37 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,6 +51,8 @@ public:
 	void build(HTTP_Response &response, HTTP_Request &request);
 	void reset();
 
+	static ssize_t getClientMaxBodySize(const ServerConfig &sc, const HTTP_Request &req, HTTP_Response &res);
+
 private:
 	ServerConfig _serverConfig;
 	LocationConfig _location;
@@ -65,12 +67,14 @@ private:
 	void build_response_for_DELETE(HTTP_Response &response, HTTP_Request &request);
 
 	bool locationHasMethod(const LocationConfig &location, std::string method);
+	static const LocationConfig &locationGetBestMatch(const ServerConfig &sc, const HTTP_Request &req);
 	const LocationConfig &locationGetBestMatch(const HTTP_Request &request);
 	std::string translateUriToPath(const HTTP_Request &request);
 
 	void setResponse(HTTP_Response &response, const HTTP_StatusPair &status);
+	static void setResponse(HTTP_Response &response, const HTTP_StatusPair &status, const ServerConfig &sc);
 
-	void setResponseRedirect(HTTP_Response &response, const int statusCode, const std::string &url);
+	static void setResponseRedirect(HTTP_Response &response, const int statusCode, const std::string &url);
 };
 
 #endif // HTTP_RESPONSEBUILDER_HPP

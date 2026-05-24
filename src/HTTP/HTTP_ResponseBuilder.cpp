@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/20 10:48:39 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/14 21:58:16 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/24 14:30:27 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -92,7 +92,7 @@ void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 		if (e.getStatus() == HTTP_Status::FOUND)
 		{
 			std::cout << "[DEBUG] HTTP_ResponseBuilder::build - location, canonicalization redirect!" << std::endl;
-			setResponseRedirect(response, HTTP_Status::FOUND.code, e.what());
+			HTTP_ResponseBuilder::setResponseRedirect(response, HTTP_Status::FOUND.code, e.what());
 			return;
 		}
 
@@ -108,7 +108,7 @@ void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 
 	if (_location.redirect_code > 0) // TO-DO: needs improving, redirect_code is always ZERO from config parser
 	{
-		setResponseRedirect(response, _location.redirect_code, _location.redirect_url);
+		HTTP_ResponseBuilder::setResponseRedirect(response, _location.redirect_code, _location.redirect_url);
 		return;
 	}
 
@@ -195,10 +195,15 @@ void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 
 void HTTP_ResponseBuilder::setResponse(HTTP_Response &response, const HTTP_StatusPair &status)
 {
+	HTTP_ResponseBuilder::setResponse(response, status, _serverConfig);
+}
+
+void HTTP_ResponseBuilder::setResponse(HTTP_Response &response, const HTTP_StatusPair &status, const ServerConfig &sc)
+{
 	response.setStatus(status);
 	if (!response.isHeadersOnly())
 	{
-		response.setContent(ErrorPages::getContent(_serverConfig, status));
+		response.setContent(ErrorPages::getContent(sc, status));
 	}
 }
 
@@ -246,7 +251,7 @@ void HTTP_ResponseBuilder::build_response_for_GET_or_HEAD(HTTP_Response &respons
 			// URL normalization or path canonicalization redirect
 			// the directory exists, but the client did not request
 			// it properly, there was a missing '/' at the end
-			setResponseRedirect(
+			HTTP_ResponseBuilder::setResponseRedirect(
 				response,
 				HTTP_Status::FOUND.code,
 				directoryURL + "/");
@@ -414,15 +419,16 @@ void HTTP_ResponseBuilder::build_response_for_DELETE(
 		response.setContent(ErrorPages::getContent(_serverConfig, HTTP_Status::INTERNAL_SERVER_ERROR));
 }
 
-const LocationConfig &HTTP_ResponseBuilder::locationGetBestMatch(const HTTP_Request &request)
+const LocationConfig &HTTP_ResponseBuilder::locationGetBestMatch(
+	const ServerConfig &sc, const HTTP_Request &req)
 {
-	std::vector<LocationConfig>::const_iterator selectedLocation_it = _serverConfig.locations.end();
+	std::vector<LocationConfig>::const_iterator selectedLocation_it = sc.locations.end();
 
 	// 1. Strip the query string so we only match against the actual path
-	std::string reqURL = request.getURLWithoutParams();
+	std::string reqURL = req.getURLWithoutParams();
 
-	std::vector<LocationConfig>::const_iterator loc_it = _serverConfig.locations.begin();
-	for (; loc_it != _serverConfig.locations.end(); ++loc_it)
+	std::vector<LocationConfig>::const_iterator loc_it = sc.locations.begin();
+	for (; loc_it != sc.locations.end(); ++loc_it)
 	{
 		std::string locPath = loc_it->path;
 
@@ -454,7 +460,7 @@ const LocationConfig &HTTP_ResponseBuilder::locationGetBestMatch(const HTTP_Requ
 			// 4. If it's a valid match, check if it's the longest one we've seen
 			if (isValidMatch)
 			{
-				if (selectedLocation_it == _serverConfig.locations.end() ||
+				if (selectedLocation_it == sc.locations.end() ||
 					locPath.length() > selectedLocation_it->path.length())
 				{
 					selectedLocation_it = loc_it;
@@ -463,12 +469,17 @@ const LocationConfig &HTTP_ResponseBuilder::locationGetBestMatch(const HTTP_Requ
 		}
 	}
 
-	if (selectedLocation_it == _serverConfig.locations.end())
+	if (selectedLocation_it == sc.locations.end())
 		// throw std::runtime_error("No suitable server/location found for " + reqURL);
 		throw HTTP_ResponseBuilder::Exception(HTTP_Status::NOT_FOUND, reqURL);
 
 	std::cout << "[DEBUG] Best location match is: " << selectedLocation_it->path << std::endl;
 	return (*selectedLocation_it);
+}
+
+const LocationConfig &HTTP_ResponseBuilder::locationGetBestMatch(const HTTP_Request &request)
+{
+	return (HTTP_ResponseBuilder::locationGetBestMatch(_serverConfig, request));
 }
 
 //
@@ -533,4 +544,51 @@ void HTTP_ResponseBuilder::reset()
 
 	_pathOnServer = "";
 	_pathType = PATH_NONE;
+}
+
+// Will return -1 if there was no suitable location found for
+// the given request and will set the response accordingly into res.
+//
+// Will return 0 if neither the location best matching the request
+// URL has no client_max_body_size nor the server block of the
+// location has client_max_body_size defined.
+//
+// Will return the client_max_body_size from the best matching
+// location or from the server block if the location block does
+// not have one!
+ssize_t HTTP_ResponseBuilder::getClientMaxBodySize(
+	const ServerConfig &sc, const HTTP_Request &req, HTTP_Response &res)
+{
+	LocationConfig location;
+
+	try
+	{
+		location = HTTP_ResponseBuilder::locationGetBestMatch(sc, req);
+	}
+	catch (HTTP_ResponseBuilder::Exception &e)
+	{
+		if (e.getStatus() == HTTP_Status::FOUND)
+		{
+			std::cout << "[DEBUG] HTTP_ResponseBuilder::build - location, canonicalization redirect!" << std::endl;
+			HTTP_ResponseBuilder::setResponseRedirect(res, HTTP_Status::FOUND.code, e.what());
+			return (-1);
+		}
+
+		// the only other possible exception at the moment is HTTP_Status::NOT_FOUND
+		std::cout << "[DEBUG] HTTP_ResponseBuilder::build - locationGetBestMatch:"
+				  << std::endl
+				  << "        " << e.getStatus().text << ": " << e.what()
+				  << std::endl;
+
+		HTTP_ResponseBuilder::setResponse(res, HTTP_Status::NOT_FOUND, sc);
+		return (-1);
+	}
+
+	size_t client_max_body_size = 0;
+	if (location.client_max_body_size > 0)
+		client_max_body_size = location.client_max_body_size;
+	else if (sc.client_max_body_size > 0)
+		client_max_body_size = sc.client_max_body_size;
+
+	return (static_cast<ssize_t>(client_max_body_size));
 }
