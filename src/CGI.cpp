@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/11 17:53:52 by aaladeok          #+#    #+#             */
-/*   Updated: 2026/05/24 12:05:21 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/24 14:12:14 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -336,6 +336,9 @@ HTTP_Response CGI::parseCGIOutput(const std::string& output) {
             if (line.empty()) continue;
             
             // --- NPH MODE DETECTED ---
+            // AI NOTES: NPH = Non-Parsed Header or No-Parsed Header
+            // these headers are sent from the CGI script or executable, along
+            // with the CGI body
             if (i == 0 && line.length() > 5 && line.substr(0, 5) == "HTTP/") {
                 std::vector<std::string> parts = Utils::split(line, ' ');
                 if (parts.size() >= 2) {
