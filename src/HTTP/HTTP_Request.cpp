@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:46:32 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/20 13:03:56 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/23 21:23:25 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -176,6 +176,15 @@ std::string HTTP_Request::getURLWithoutParams() const
 
 	return (_url);
 }
+std::string HTTP_Request::getQueryString() const
+{
+	size_t queryStartPos = _url.find('?');
+
+	if (queryStartPos != std::string::npos)
+		return (_url.substr(queryStartPos + 1));
+
+	return ("");
+}
 const std::string &HTTP_Request::getVersion() const
 {
 	return (_version);
@@ -241,9 +250,8 @@ bool HTTP_Request::hasHeader(const std::string &fieldName) const
 
 void HTTP_Request::dumpToFile(const std::string &filename) const
 {
-	std::string filename_ok = Utils::getNextAvailableFilename(filename);
-	Utils::writeStringToFile(filename_ok, serialize());
-	std::cout << "[DEBUG] Request saved/dumped to " << filename_ok << std::endl;
+	std::string filename_dumped_to = Utils::dumpToFile(filename, serialize());
+	std::cout << "[DEBUG] Request saved/dumped to " << filename_dumped_to << std::endl;
 }
 
 int HTTP_Request::_parseRequestLine(std::string line)
@@ -638,6 +646,12 @@ void HTTP_Request::reset()
 
 std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr)
 {
+	if (hr._headers.size() == 0 && hr._body.size() == 0)
+	{
+		os << "Empty HTTP_Request object! (was just initialized or all states were reset)" << std::endl;
+		return (os);
+	}
+
 	if (DEBUG_MODE && !hr._requestLine_completed)
 	{
 		os << "[DEBUG] HTTP_Request - incomplete header line";

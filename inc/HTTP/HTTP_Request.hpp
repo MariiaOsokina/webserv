@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/20 13:03:44 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/23 21:20:12 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,6 +74,7 @@ public:
 	const std::string &getMethod() const;
 	const std::string &getURL() const;
 	std::string getURLWithoutParams() const;
+	std::string getQueryString() const;
 	const std::string &getVersion() const;
 	const std::map<std::string, std::string, CaseInsensitiveCompare> getHeaders() const;
 	const std::string &getBody() const;
@@ -145,8 +146,9 @@ private:
 	friend std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr);
 
 	friend class HTTP_ResponseBuilder; // FOR DEBUG ONLY!!! TO-DO: REMOVE!
+	friend std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr);
 };
 
-std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr);
+//std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr);
 
 #endif // HTTP_REQUEST_HPP
