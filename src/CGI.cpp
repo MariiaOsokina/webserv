@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/11 17:53:52 by aaladeok          #+#    #+#             */
-/*   Updated: 2026/05/24 14:12:14 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/25 10:59:52 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,13 +35,21 @@ void CGI::setupEnvironment(const std::string& script_name) {
 	_env["SERVER_SOFTWARE"] = WEBSERV_NAME; // AI: fix //"webserv/1.0";
 	_env["REQUEST_METHOD"] = _request.getMethod();
 
-	// 2. Parse URI, Query String, and Path Info
-	// MO: Required for php-cgi to run properly
-	_env["REDIRECT_STATUS"] = "200"; //Newly added
-	//_env["SCRIPT_NAME"] = script_name;
-    _env["SCRIPT_NAME"] = _request.getURLWithoutParams();
-	_env["QUERY_STRING"] = _request.getQueryString(); // AI: updated for clean code
-	_env["PATH_INFO"] = extractPathInfo(_request.getURL(), script_name); // AI: updated
+    std::string file_ext = Utils::toLowerCase(Utils::getExtension(script_name));
+    if (file_ext == ".php")
+    {
+	    // 2. Parse URI, Query String, and Path Info
+	    // MO: Required for php-cgi to run properly
+	    _env["REDIRECT_STATUS"] = "200"; //Newly added
+	    //_env["SCRIPT_NAME"] = script_name;
+        _env["SCRIPT_NAME"] = _request.getURLWithoutParams();
+	    _env["QUERY_STRING"] = _request.getQueryString(); // AI: updated for clean code
+	    _env["PATH_INFO"] = extractPathInfo(_request.getURL(), script_name); // AI: updated
+    }
+    else
+    {
+        _env["PATH_INFO"] = _request.getURLWithoutParams();
+    }
 	
 	// 3. Dynamic Absolute Pathing (Fixes the hardcoded "/home/..." string)
 	char cwd[1024];
