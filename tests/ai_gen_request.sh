@@ -9,6 +9,11 @@ HOST="localhost:8080"
 #PIPE_OUTPUT_TO="cat -e"
 PIPE_OUTPUT_TO="nc localhost 8080"
 
+GREEN='\033[1;32m'
+LIGHT_BLUE='\033[1;34m'
+LIGHT_YELLOW='\033[1;33m'
+COLOR_RESET='\033[0m'
+
 # Function to display usage instructions
 print_usage() {
 	echo "Usage:"
@@ -37,7 +42,7 @@ if [ "$MODE" = "normal" ]; then
 	BODY=$(printf 'A%.0s' $(seq 1 "$TOTAL_BYTES"))
 
 	# Group headers and body, then pass to cat -e
-	{
+	THE_HTTP_REQUEST=$({
 		printf "POST %s HTTP/1.1\r\n" "$REQUEST_URL"
 		printf "Host: %s\r\n" "$HOST"
 		#		printf "Content-Type: text/plain\r\n"
@@ -45,7 +50,7 @@ if [ "$MODE" = "normal" ]; then
 		printf "Connection: close\r\n"
 		printf "\r\n"
 		printf "%s" "$BODY"
-	} | $PIPE_OUTPUT_TO
+	})
 
 elif [ "$MODE" = "chunked" ]; then
 	# Validate the third argument for chunked mode
@@ -63,7 +68,7 @@ elif [ "$MODE" = "chunked" ]; then
 	fi
 
 	# Group the multi-line output generation block
-	{
+	THE_HTTP_REQUEST=$({
 		# Print main headers
 		printf "POST %s HTTP/1.1\r\n" "$REQUEST_URL"
 		printf "Host: %s\r\n" "$HOST"
@@ -96,9 +101,34 @@ elif [ "$MODE" = "chunked" ]; then
 		# Print final mandatory terminating chunk (0) and empty trailer line
 		printf "0\r\n"
 		printf "\r\n"
-	} | $PIPE_OUTPUT_TO
+	})
 
 else
 	echo "Error: Invalid mode '$MODE'. Use 'normal' or 'chunked'."
 	print_usage
+fi
+
+if [ ! -z "$THE_HTTP_REQUEST" ]; then
+	printf "\n"
+	printf "$GREEN"
+	printf "SENDING THE HTTP REQUEST TO $HOST"
+	printf "$COLOR_RESET"
+	printf "\n"
+	printf "$THE_HTTP_REQUEST"
+	printf "$GREEN"
+	printf "==FIN=="
+	printf "\n"
+	printf "$COLOR_RESET"
+
+	THE_RESPONSE=$(printf "$THE_HTTP_REQUEST" | $PIPE_OUTPUT_TO)
+	printf "\n"
+	printf "$LIGHT_YELLOW"
+	printf "GOT RESPONSE:"
+	printf "$COLOR_RESET"
+	printf "\n"
+	printf "$THE_RESPONSE"
+	printf "$LIGHT_YELLOW"
+	printf "==FIN=="
+	printf "$COLOR_RESET"
+	printf "\n\n"
 fi
