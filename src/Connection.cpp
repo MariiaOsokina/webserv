@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/11 12:49:10 by mosokina          #+#    #+#             */
-/*   Updated: 2026/05/24 11:20:42 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/25 11:05:42 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -244,6 +244,18 @@ void Connection::_setupBodyReading()
     {
         _expectedBodySize = std::strtoul(itCL->second.c_str(), NULL, 10);        
         size_t maxBodySize = _listener->getConfig().client_max_body_size;
+		//
+		// AI: the below commented section is a demo of how to
+		// read client_max_body_size from a location at any time,
+		// after the request line has been parsed
+		//
+		//ssize_t max_body_size = HTTP::ResponseBuilder::getClientMaxBodySize(_listener->getConfig(), _request, _response);
+		//if (max_body_size == -1)
+		//{
+		//	// HTTP::ResponseBuilder::getClientMaxBodySize will set _response accordingly
+		//	// send _response.serialise()
+		//}
+		//size_t maxBodySize = static_cast<size_t>(max_body_size);
         if (maxBodySize > 0 && _expectedBodySize > maxBodySize) {
             std::cout << "[WebServ] Payload too large (Content-Length): " << _expectedBodySize << std::endl;
             _request.setParseStatus(HTTP_Request::CONTENT_TOO_LARGE);
