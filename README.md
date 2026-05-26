@@ -64,6 +64,11 @@ Manual test via a web browser (we used FireFox):
      via a HTML form and the POST method to another .php script
    - test CGI (by Maria), showing the parsing of the query string
      from the URL and processed by a python script
+   - Redirect by status code only - will open a new browser tab,
+     redirecting to a page that only has a status code (ex. return 418)
+   - Redirect by status code and URL - will again open a new
+     browser tab, redirecting to a URL page, by a status code
+     and a URL (ex. return 301 https://www.yahoo.com)
 
    NOTE: we can notice .sh, .php and .py scripts being run on
    our server!
@@ -104,5 +109,3 @@ Automated test, running the 42 tester:
 
 - How the web works: HTTP and CGI explained
   https://www.garshol.priv.no/download/text/http-tut.html
-
-- ...
