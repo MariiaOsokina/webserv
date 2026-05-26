@@ -6,7 +6,7 @@
 #    By: aistok <aistok@student.42london.com>       +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/01/14 18:42:19 by aistok            #+#    #+#              #
-#    Updated: 2026/05/26 14:45:17 by aistok           ###   ########.fr        #
+#    Updated: 2026/05/26 15:43:51 by aistok           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -68,7 +68,7 @@ CLEAR		:=	\001\033[K\002
 # $2 is the action verb in case of success or failure; ex: compiled
 # $3 is the targeted file name
 # $4 is the command that will be executed to get the target file
-define anim
+define fancylog
 	@echo -ne "\r$(GRAY)$1 $(END)$3$(GRAY)...$(CLEAR)"
 	@$4 > $(MAKE_ERROR_LOG) 2>&1 && \
 	echo -e "\r$(GREEN)OK: $(END)$3 $(GRAY)$2.$(CLEAR)" || \
@@ -80,12 +80,12 @@ all: $(MAKE_DB) $(NAME)
 
 $(NAME): $(INC_FILES) $(OBJ_FILES) | $(BIN_DIR)
 	@echo
-	$(call anim,Linking,linked,$(NAME),$(CC) $(CFLAGS) $(DFLAGS) -I$(INC_DIR) $(OBJ_FILES) -o $@)
+	$(call fancylog,Linking,linked,$(NAME),$(CC) $(CFLAGS) $(DFLAGS) -I$(INC_DIR) $(OBJ_FILES) -o $@)
 
 $(NAME): | set_executables www/delete_test
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(INC_FILES) | $(OBJ_DIR)
-	$(call anim,Compiling,compiled,$@,$(CC) $(CFLAGS) $(DFLAGS) -I$(INC_DIR) -c $< -o $@)
+	$(call fancylog,Compiling,compiled,$@,$(CC) $(CFLAGS) $(DFLAGS) -I$(INC_DIR) -c $< -o $@)
 
 $(OBJ_DIR): EXTRA_DIRS := $(OBJ_DIRS)
 
@@ -95,7 +95,7 @@ $(OBJ_DIR) $(BIN_DIR) $(MAKE_DB):
 	@echo -e "\r$(CLEAR)$(GREEN)OK:$(END) $(@) $(GRAY)created!$(END)"
 
 www/delete_test:
-	$(call anim,Creating,created,$@,./tests/prep_www_for_delete_testing.sh)
+	$(call fancylog,Creating,created,$@,./tests/prep_www_for_delete_testing.sh)
 
 # this is for Makefile debug only
 test:
@@ -131,16 +131,17 @@ runtests core_tests: all
 
 set_executables: | $(MAKE_EXEC)
 
+$(MAKE_EXEC): EXECUTABLES_SUBSTR := $(shell EXECUTABLES="$(EXECUTABLES)"; echo "$${EXECUTABLES:0:50} ...")
 $(MAKE_EXEC): | $(MAKE_DB)
-	$(call anim,Setting permissions,permissions set,$@,chmod +x $(EXECUTABLES) 2>/dev/null || true)
+	$(call fancylog,Setting permissions,permissions set,$(EXECUTABLES_SUBSTR),chmod +x $(EXECUTABLES) 2>/dev/null || true)
 	@touch $@
 
 clean:
-	$(call anim,Removing,removed,$(OBJ_DIR),@$(RM) $(OBJ_DIR))
+	$(call fancylog,Removing,removed,$(OBJ_DIR),$(RM) $(OBJ_DIR) || true)
 
 fclean: clean
-	$(call anim,Removing,removed,$@,@$(RM) $(BIN_DIR))
-	$(call anim,Removing,removed,./www/delete_test,./tests/prep_www_for_delete_testing.sh fclean)
+	$(call fancylog,Removing,removed,$(BIN_DIR),$(RM) $(BIN_DIR) || true)
+	$(call fancylog,Removing,removed,./www/delete_test,./tests/prep_www_for_delete_testing.sh fclean)
 	@$(RM) $(MAKE_DB)
 
 re: fclean all
