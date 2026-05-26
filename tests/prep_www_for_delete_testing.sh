@@ -35,6 +35,7 @@ if [ ! -z $1 ]; then
 fi
 
 DIR_RD_ONLY="$DIR_NAME/read_only_dir"
+DIR_EMPTY="$DIR_NAME/empty_dir"
 
 setup_test_dir_for_delete_request() {
 
@@ -49,6 +50,8 @@ setup_test_dir_for_delete_request() {
 
 	echo "Some content for this file" >>"$DIR_NAME/file1.txt"
 	echo "Try delete me" >>"$DIR_NAME/file2.txt"
+
+	mkdir "$DIR_EMPTY"
 }
 
 clean_up_dir_for_delete_request() {
