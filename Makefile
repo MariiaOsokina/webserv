@@ -6,7 +6,7 @@
 #    By: aistok <aistok@student.42london.com>       +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/01/14 18:42:19 by aistok            #+#    #+#              #
-#    Updated: 2026/05/26 12:52:22 by aistok           ###   ########.fr        #
+#    Updated: 2026/05/26 13:45:27 by aistok           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -107,6 +107,9 @@ test:
 	@echo OBJ_FILES:
 	@echo $(OBJ_FILES)
 
+run: all
+	@$(NAME)
+
 runtests:
 	@/bin/bash tests/run_python_tests.sh
 
@@ -129,4 +132,5 @@ re: fclean all
 .PHONY: all clean fclean re \
 		test \
 		runtests \
-		set_executables
+		set_executables \
+		run

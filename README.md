@@ -18,7 +18,8 @@ The main goals of this project were, to:
 
 ## Instructions
 
-To see the result of our work in action, see the below suggested options:
+To see the result of our work in action, see the below suggested options.
+Note: use CTRL + C at any time to shut down the server gracefully!
 
 Manual test via a web browser (we used FireFox):
 
