@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/14 19:02:21 by aistok            #+#    #+#             */
-/*   Updated: 2026/04/24 23:08:43 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/26 12:54:00 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,7 +34,7 @@ void handleSigint(int sig)
 int main(int argc, char **argv)
 {
 	// TEMPORARILY, FOR CONFIG TESTING ONLY
-	std::string config_file = "config/default.conf";
+	std::string config_file = "config/advanced.conf";
 	// std::string config_file = "config/advanced.conf";
 	// std::string config_file = "config/test_duplicate_directive.conf";
 	// std::string config_file = "config/test_invalid_method.conf";
