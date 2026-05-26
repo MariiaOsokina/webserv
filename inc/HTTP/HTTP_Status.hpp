@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/12 14:37:18 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/13 18:40:38 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/25 18:07:28 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -90,6 +90,9 @@ public:
 
 	static const HTTP_StatusPair CONTENT_TOO_LARGE;
 	static const HTTP_StatusPair s413;
+
+	static const HTTP_StatusPair IM_A_TEAPOT;
+	static const HTTP_StatusPair s418;
 
 	static const HTTP_StatusPair UNPROCESSABLE_CONTENT;
 	static const HTTP_StatusPair s422;
