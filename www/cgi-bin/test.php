@@ -70,7 +70,7 @@ header("Content-Type: text/html");
             </tr>
         </table>
         
-        <p><a href="/">← Back to Home</a></p>
+        <!--p><a href="/">← Back to Home</a></p-->
     </div>
 </body>
 </html>
