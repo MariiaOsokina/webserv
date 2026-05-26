@@ -16,3 +16,5 @@ file_dumps/*
 # these are some debug filedumps of requests and responses the server receives
 request_cgi*
 response_cgi*
+
+.make_db
