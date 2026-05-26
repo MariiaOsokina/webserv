@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/10 22:56:55 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/23 21:20:12 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,12 +33,15 @@ struct CaseInsensitiveCompare {
 	}
 };
 
+typedef std::map<std::string, std::string, CaseInsensitiveCompare> HTTP_Headers;
+
 class HTTP_Request
 {
 public:
 	HTTP_Request();
 	HTTP_Request(const char *raw, size_t len);
-
+	HTTP_Request(const HTTP_Request &other);
+	HTTP_Request &operator=(const HTTP_Request &other);
 	~HTTP_Request();
 
 	enum ParseStatus
@@ -49,6 +52,7 @@ public:
 		REQUEST_TIMEOUT = 408,
 		CONTENT_TOO_LARGE = 413,
 		REQUEST_HEADER_FIELDS_TOO_LARGE = 431,
+		NOT_IMPLEMENTED = 501,
 		HTTP_VERSION_NOT_SUPPORTED = 505,
 	};
 
@@ -64,27 +68,34 @@ public:
 
 	int parseHeaders(const char *raw, size_t len);
 	void setBody(std::string data, size_t len);
+	void appendToBody(std::string data, size_t len, bool isFinalAppend);
 
 	int getParseStatus() const;
 	const std::string &getMethod() const;
 	const std::string &getURL() const;
 	std::string getURLWithoutParams() const;
+	std::string getQueryString() const;
 	const std::string &getVersion() const;
 	const std::map<std::string, std::string, CaseInsensitiveCompare> getHeaders() const;
 	const std::string &getBody() const;
+	std::string serialize() const;
+	
+	bool isMultipartRequest() const;
+	const std::string getMultipartBoundary() const;
+	int populateMultipartVars();
 
 	bool ready();
 	void reset();
 	void setParseStatus(ParseStatus status);
+	HTTP_Request getDisplayFriendlyRequest();
+	bool hasHeader(const std::string &fieldName) const;
+	void dumpToFile(const std::string &filename) const;
 
 protected:
 	// ...
 
 private:
-	// Rule of three
-	HTTP_Request(const HTTP_Request &other);
-	HTTP_Request &operator=(const HTTP_Request &other);
-
+	bool _isDisplayFriendlyRequest;
 	std::string _method;
 	std::string _url;
 	std::string _version;
@@ -97,14 +108,23 @@ private:
 	* Using CaseInsensitiveCompare ensures that "Content-Type" and "content-type" 
 	* are treated as the same key, preventing duplicate entries and lookup failures.
 	*/
-	std::map<std::string, std::string, CaseInsensitiveCompare> _headers; // MO: added
+	HTTP_Headers _headers;
 	bool _headers_completed;
 	int _headersRequiredCount;
+	
+	bool _isMultipartRequest;
+	std::string _multipartBoundary;
+	std::string _multipartFilename;
+	std::string _multipartContentType;
+	std::string _multipartData;
 
 	std::string _body;
 	bool _body_completed;
 
 	ParseStatus _parseStatus;
+
+	void _init_class_vars();
+	void _set_class_vars(const HTTP_Request &other);
 
 	int _parseRequestLine(std::string line);
 	int _parseMethod(std::string method);
@@ -118,12 +138,17 @@ private:
 	int _headerValueIsValid(std::string value);
 	int _fieldNameAlreadyProcessed(std::string eKey);
 	int _fieldNameIsSecurityRisk(std::string eKey);
+	HTTP_Headers _parseMultipartHeaders(const std::string &multipartHeadersStr);
+	std::string _extractFromValue(const std::string &prefix, const std::string &dataString);
 
 	// only if need access to private or protected elements
 	friend class HTTP;
 	friend std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr);
+
+	friend class HTTP_ResponseBuilder; // FOR DEBUG ONLY!!! TO-DO: REMOVE!
+	friend std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr);
 };
 
-std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr);
+//std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr);
 
 #endif // HTTP_REQUEST_HPP

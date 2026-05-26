@@ -21,7 +21,7 @@ php-cgi -v
 python3 --version
 ```
 
-> **Note:** If `php-cgi` is in a non-standard path, update the `cgi_map` in `config/advanced.conf`.
+> **Note:** If `php-cgi` is in a non-standard path, update the `cgi_pass` in `config/advanced.conf`.
 
 ---
 

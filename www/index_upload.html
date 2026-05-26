@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>File Upload with Preview</title>
+  <title>Simple file upload</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -77,7 +77,8 @@
         body: formData
       })
         .then(response => {
-          if (response.ok) {
+          if (response.status >= 200 && response.status < 300) {
+            console.log("Success! Response to upload is OK.");
             return response.text(); // or response.json() if JSON
           } else {
             throw new Error('Upload failed');

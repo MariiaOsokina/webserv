@@ -61,7 +61,7 @@ def test_stalled_zero_chunk():
 	try:
 		with get_socket() as s:
 			# Start a chunked request
-			s.sendall(b"POST / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n")
+			s.sendall(b"POST /upload HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n")
 			s.sendall(b"5\r\nHello\r\n")
 			
 			# Send the zero chunk but MISS the final \r\n
@@ -87,26 +87,26 @@ def test_stalled_zero_chunk():
 			s.settimeout(TIMEOUT) # Reset to your standard global timeout
 			response = s.recv(4096).decode('utf-8', errors='ignore')
 			
-			passed = "200" in response
+			passed = "201" in response
 			status = response.split('\r\n')[0] if response else "No Response"
 			
-			print_result("200 OK after CRLF", status, passed)
+			print_result("201 OK after CRLF", status, passed)
 
 	except Exception as e:
-		print_result("200 OK", "ERROR", False, error=str(e))
+		print_result("201 Created", "ERROR", False, error=str(e))
 
 def test_fragmented_chunked():
 	print("[STRESS] Fragmented Chunked Body...", end=" ", flush=True)
 	try:
 		with get_socket() as s:
-			s.sendall(b"POST / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n")
+			s.sendall(b"POST /upload HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n")
 			# Send '5\r\nHello\r\n' slowly
 			for char in [b'5', b'\r', b'\n', b'H', b'e', b'l', b'l', b'o', b'\r', b'\n']:
 				s.sendall(char)
 				time.sleep(0.05)
 			s.sendall(b"0\r\n\r\n")
 			response = s.recv(4096).decode()
-			if "200" in response:
+			if "201" in response:
 				print("✅ PASS")
 			else:
 				print("❌ FAIL")
@@ -116,7 +116,7 @@ def test_fragmented_chunked():
 
 def test_partial_read():
 	print("[ADVANCED] Partial Read (Byte-by-Byte)")
-	request = b"POST / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 10\r\n\r\n0123456789"
+	request = b"POST /upload HTTP/1.1\r\nHost: localhost\r\nContent-Length: 10\r\n\r\n0123456789"
 	try:
 		with get_socket() as s:
 			for byte in request:
@@ -124,9 +124,9 @@ def test_partial_read():
 				time.sleep(0.01)
 			response = s.recv(4096).decode('utf-8', errors='ignore')
 			first_line = response.split('\r\n')[0] if response else "EMPTY"
-			print_result("200", first_line, "200" in first_line)
+			print_result("201", first_line, "201" in first_line)
 	except Exception as e:
-		print_result("200", "ERROR", False, error=str(e))
+		print_result("201", "ERROR", False, error=str(e))
 
 def test_fragmented_standard_body():
 	print("[STRESS] Fragmented Standard Body (Partial Body Sends)")
@@ -134,7 +134,7 @@ def test_fragmented_standard_body():
 		with get_socket() as s:
 			# Content-Length is 10
 			# Send headers first
-			s.sendall(b"POST / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 10\r\n\r\n")
+			s.sendall(b"POST /upload HTTP/1.1\r\nHost: localhost\r\nContent-Length: 10\r\n\r\n")
 			
 			# Send first half of the body
 			s.sendall(b"12345") 
@@ -149,13 +149,13 @@ def test_fragmented_standard_body():
 			# Receive response
 			response = s.recv(4096).decode('utf-8', errors='ignore')
 			
-			passed = "200" in response
+			passed = "201" in response
 			status = response.split('\r\n')[0] if response else "No Response"
 			
-			print_result("200 OK", status, passed)
+			print_result("201 Created", status, passed)
 			
 	except Exception as e:
-		print_result("200 OK", "ERROR", False, error=str(e))
+		print_result("201 Created", "ERROR", False, error=str(e))
 
 
 
@@ -372,7 +372,7 @@ if __name__ == "__main__":
 	SERVER_HOST, SERVER_PORT = args.host, args.port
 	print(f"Starting WebServ Test Suite on {SERVER_HOST}:{SERVER_PORT}\n")
 
-	# # 1. Request Line & Headers
+	# 1. Request Line & Headers
 	run_test("REQ_LINE", "Valid Request", b"GET /index-mo.html HTTP/1.1\r\nHost: localhost\r\n\r\n", "200")
 	run_test("REQ_LINE", "Valid Request", b"GET /index-mo.html HTTP/1.1\r\nHost: localhost\r\n\r\n", "200")
 	run_test("REQ_LINE", "Missing Version", b"GET /\r\nHost: localhost\r\n\r\n", "400")
@@ -397,11 +397,11 @@ if __name__ == "__main__":
 
 	# Exact match
 	run_test("BODY", "Exact Content-Length", 
-	         b"POST / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\n12345", "200")
+	         b"POST /upload HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\n12345", "201")
 
 	# Content-Length: 0 (Should transition to REQUEST_READY immediately)
 	run_test("BODY", "Zero Content-Length", 
-	         b"POST / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n", "200")
+	         b"POST /upload HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n", "201")
 
 	# Content-Length larger than max_body_size (Should be caught in _setupBodyReading)
 	# Assuming your max_body_size in config is smaller than 1,000,000,000
@@ -413,22 +413,22 @@ if __name__ == "__main__":
  
 	run_test("SECURITY", "Smuggling (CL + TE)", b"POST / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n", "400")
 	run_test("SECURITY", "Invalid Hex Chunk Size", 
-	         b"POST / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\nG\r\n", "400")
 
+	         b"POST / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\nG\r\n", "400")
 	# 2. CHUNKED VARIATIONS
 	run_test("BODY", "Standard Chunked", 
-	         b"POST / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n0\r\n\r\n", "200")
+	         b"POST /upload HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n0\r\n\r\n", "201")
 	
 	run_test("BODY", "Chunked Extensions", 
-	         b"POST / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n5;ext=val\r\nHello\r\n0\r\n\r\n", "200")
+	         b"POST /upload HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n5;ext=val\r\nHello\r\n0\r\n\r\n", "201")
 	
 	run_test("BODY", "Multiple Trailers", 
-	     b"POST / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n"
+	     b"POST /upload HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n"
 	     b"5\r\nHello\r\n"
 	     b"0\r\n"
 	     b"Trailer-One: value1\r\n"
 	     b"Trailer-Two: value2\r\n"
-	     b"\r\n", "200")
+	     b"\r\n", "201")
 
 	# 3. TRANSFER ENCODING LIMITS
 	run_test("BODY", "Unsupported TE (gzip)", 

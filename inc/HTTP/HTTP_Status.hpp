@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/12 14:37:18 by aistok            #+#    #+#             */
-/*   Updated: 2026/04/07 20:22:23 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/25 18:07:28 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,8 @@ typedef struct HTTP_StatusPair
 {
 	int code;
 	const char *text;
+
+	bool operator==(const HTTP_StatusPair &other) const;
 } HTTP_StatusPair;
 
 class HTTP_Status
@@ -88,6 +90,9 @@ public:
 
 	static const HTTP_StatusPair CONTENT_TOO_LARGE;
 	static const HTTP_StatusPair s413;
+
+	static const HTTP_StatusPair IM_A_TEAPOT;
+	static const HTTP_StatusPair s418;
 
 	static const HTTP_StatusPair UNPROCESSABLE_CONTENT;
 	static const HTTP_StatusPair s422;

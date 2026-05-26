@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   CGI.hpp                                            :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/05/11 17:53:52 by aaladeok          #+#    #+#             */
+/*   Updated: 2026/05/24 04:47:59 by aistok           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #ifndef CGI_HPP
 #define CGI_HPP
 
@@ -8,6 +20,7 @@
 
 
 #include <unistd.h> // Required for getcwd
+#include "Utils.hpp" // AI: suggesting as this already has Utils::getcwd function
 
 class HTTP_Response;
 class HTTP_Request;

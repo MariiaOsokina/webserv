@@ -6,33 +6,70 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:46:32 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/10 23:10:14 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/23 21:23:25 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "HTTP/HTTP_Request.hpp"
 
-HTTP_Request::HTTP_Request() : _method(""),
-							   _url(""),
-							   _version(""),
-							   _requestLine_completed(false),
-							   _headers_completed(false),
-							   _headersRequiredCount(0),
-							   _body_completed(false),
-							   _parseStatus(INCOMPLETE)
+void HTTP_Request::_init_class_vars()
 {
-	// done
+	_isDisplayFriendlyRequest = false;
+
+	_method = "";
+	_url = "";
+	_version = "";
+	_requestLine_completed = false;
+
+	_headers.clear();
+	_headers_completed = false;
+	_headersRequiredCount = 0;
+
+	_isMultipartRequest = false;
+	_multipartBoundary = "";
+	_multipartFilename = "";
+	_multipartContentType = "";
+	_multipartData = "";
+
+	_body = "";
+	_body_completed = false;
+
+	_parseStatus = INCOMPLETE;
 }
 
-HTTP_Request::HTTP_Request(const char *raw, size_t len) : _method(""),
-														  _url(""),
-														  _version(""),
-														  _requestLine_completed(false),
-														  _headers_completed(false),
-														  _headersRequiredCount(0),
-														  _body_completed(false),
-														  _parseStatus(INCOMPLETE)
+void HTTP_Request::_set_class_vars(const HTTP_Request &other)
 {
+	_isDisplayFriendlyRequest = other._isDisplayFriendlyRequest;
+
+	_method = other._method;
+	_url = other._url;
+	_version = other._version;
+	_requestLine_completed = other._requestLine_completed;
+
+	_headers = other._headers;
+	_headers_completed = other._headers_completed;
+	_headersRequiredCount = other._headersRequiredCount;
+
+	_isMultipartRequest = other._isMultipartRequest;
+	_multipartBoundary = other._multipartBoundary;
+	_multipartFilename = other._multipartFilename;
+	_multipartContentType = other._multipartContentType;
+	_multipartData = other._multipartData;
+
+	_body = other._body;
+	_body_completed = other._body_completed;
+
+	_parseStatus = other._parseStatus;
+}
+
+HTTP_Request::HTTP_Request()
+{
+	_init_class_vars();
+}
+
+HTTP_Request::HTTP_Request(const char *raw, size_t len)
+{
+	_init_class_vars();
 	parseHeaders(raw, len);
 }
 
@@ -41,46 +78,19 @@ HTTP_Request::~HTTP_Request() {}
 HTTP_Request::HTTP_Request(const HTTP_Request &other)
 {
 	if (this != &other)
-	{
-		_method = other._method;
-		_url = other._url;
-		_version = other._version;
-		_requestLine_completed = other._requestLine_completed;
-
-		_headers = other._headers;
-		_headers_completed = other._headers_completed;
-		_headersRequiredCount = other._headersRequiredCount;
-
-		_body = other._body;
-		_body_completed = other._body_completed;
-
-		_parseStatus = other._parseStatus;
-	}
+		_set_class_vars(other);
 }
 
 HTTP_Request &HTTP_Request::operator=(const HTTP_Request &other)
 {
 	if (this != &other)
-	{
-		_method = other._method;
-		_url = other._url;
-		_version = other._version;
-		_requestLine_completed = other._requestLine_completed;
+		_set_class_vars(other);
 
-		_headers = other._headers;
-		_headers_completed = other._headers_completed;
-		_headersRequiredCount = other._headersRequiredCount;
-
-		_body = other._body;
-		_body_completed = other._body_completed;
-
-		_parseStatus = other._parseStatus;
-	}
 	return (*this);
 }
 
 /* getline removes the '\n' from each line it reads! */
-int HTTP_Request::parseHeaders(const char *raw, size_t len) // MO:SPLIT TO parseHeaders and setBody()
+int HTTP_Request::parseHeaders(const char *raw, size_t len) // MO:SPLIT TO parseHeaders and setBody() -> AI: appendToBody() instead of setBody() ?
 {
 	if (!len)
 	{
@@ -166,6 +176,15 @@ std::string HTTP_Request::getURLWithoutParams() const
 
 	return (_url);
 }
+std::string HTTP_Request::getQueryString() const
+{
+	size_t queryStartPos = _url.find('?');
+
+	if (queryStartPos != std::string::npos)
+		return (_url.substr(queryStartPos + 1));
+
+	return ("");
+}
 const std::string &HTTP_Request::getVersion() const
 {
 	return (_version);
@@ -181,9 +200,58 @@ const std::string &HTTP_Request::getBody() const
 	return (_body);
 }
 
+std::string HTTP_Request::serialize() const
+{
+	std::ostringstream oss(std::ios::binary);
+	oss << *this;
+	return (oss.str());
+}
+
+bool HTTP_Request::isMultipartRequest() const
+{
+	return (_isMultipartRequest);
+}
+
+const std::string HTTP_Request::getMultipartBoundary() const
+{
+	return (_multipartBoundary);
+}
+
 void HTTP_Request::setParseStatus(ParseStatus status)
 {
 	_parseStatus = status;
+}
+
+HTTP_Request HTTP_Request::getDisplayFriendlyRequest()
+{
+	HTTP_Request displayFriendlyRequest(*this);
+	displayFriendlyRequest._isDisplayFriendlyRequest = true;
+
+	std::string body = displayFriendlyRequest.getBody();
+	std::ostringstream newBody;
+
+	if (body.size() > 79)
+	{
+		newBody << (body.substr(0, 20))
+				<< " ... total of " << body.size() << " bytes ... "
+				<< body.substr(body.size() - 20, 20);
+		displayFriendlyRequest.setBody(newBody.str(), newBody.str().size());
+	}
+
+	return (displayFriendlyRequest);
+}
+
+bool HTTP_Request::hasHeader(const std::string &fieldName) const
+{
+	if (_headers.count(fieldName) > 0)
+		return (true);
+	return (false);
+}
+
+void HTTP_Request::dumpToFile(const std::string &filename) const
+{
+	std::string filename_dumped_to = Utils::dumpToFile(filename, serialize());
+	std::cout << "[DEBUG] Request saved/dumped to " << filename_dumped_to << std::endl;
 }
 
 int HTTP_Request::_parseRequestLine(std::string line)
@@ -293,64 +361,185 @@ int HTTP_Request::_URLIsValid(std::string url)
 
 int HTTP_Request::_parseHeaderLine(std::string line)
 {
-    if (!removePortion(line, CR))
-    {
-        _parseStatus = HTTP_Request::BAD_REQUEST;
-        return (FAILURE);
-    }
+	/*
+	 *	getline removes '\n' (LF), so,
+	 *	only check and remove '\r' (CR).
+	 */
+	if (!removePortion(line, CR))
+	{
+		_parseStatus = HTTP_Request::BAD_REQUEST;
+		return (FAILURE);
+	}
 
-    std::string::size_type pos = line.find(":", 0);
-    if (pos == std::string::npos)
-    {
-        _parseStatus = HTTP_Request::BAD_REQUEST;
-        return (FAILURE);
-    }
+	std::string::size_type pos = line.find(":", 0);
+	if (pos == std::string::npos)
+	{
+		_parseStatus = HTTP_Request::BAD_REQUEST;
+		return (FAILURE);
+	}
 
-    // 1. Extract and store in variables (Fixes compilation error)
-    std::string fieldName = line.substr(0, pos);
-    std::string value = line.substr(pos + 1);
+	// 1. Extract and store in variables (Fixes compilation error)
+	std::string fieldName = line.substr(0, pos);
+	std::string value = line.substr(pos + 1);
 
-    // 2. Trim both (Ensure " \t" is included for the key)
-    trimString(fieldName, " \t");
-	std::string charsToTrim = " \t";
-	charsToTrim += DISALLOWED_CHARS_IN_FIELD_VALUE;
-	trimString(value, charsToTrim);
-    if (!_fieldNameIsValid(fieldName) || !_headerValueIsValid(value) || 
-        _fieldNameAlreadyProcessed(fieldName) || _fieldNameIsSecurityRisk(fieldName))
-    {
-        _parseStatus = HTTP_Request::BAD_REQUEST;
-        return (FAILURE);
-    }
+	// 2. Trim both (Ensure " \t" is included for the key)
+	Utils::trim(fieldName, DISALLOWED_CHARS_IN_FIELD_VALUE);
+	Utils::trim(value, DISALLOWED_CHARS_IN_FIELD_VALUE);
 
-    // 3. Normalize for display/storage
-    std::string displayKey = capitaliseFirstLetter(fieldName);
-    
-    // 4. Robust check for Content-Length (Fixes the Hyphen bug)
-    // Using a lowercase check is safer than relying on capitalization
-    std::string lowerKey = fieldName;
-    for (size_t i = 0; i < lowerKey.length(); ++i) lowerKey[i] = tolower(lowerKey[i]);
+	if (!_fieldNameIsValid(fieldName) || !_headerValueIsValid(value) ||
+		_fieldNameAlreadyProcessed(fieldName) || _fieldNameIsSecurityRisk(fieldName))
+	{
+		_parseStatus = HTTP_Request::BAD_REQUEST;
+		return (FAILURE);
+	}
 
-    if (lowerKey == "content-length")
-    {
-        size_t value_size_t;
-        // Now 'value' is strictly "15", so numeric parsing will succeed
-        if (numberIsPositive(value) && toNumber(value, value_size_t))
-        {
-            _headers[HTTP_FieldName::CONTENT_LENGTH] = toString(value_size_t);
-        }
-        else
-        {
-            _parseStatus = HTTP_Request::BAD_REQUEST;
-            return (FAILURE);
-        }
-    }
-    else
-    {
-        _headers[displayKey] = value;
-    }
+	// 3. Normalize for display/storage
+	std::string displayKey = capitaliseFirstLetters(fieldName);
 
-    _countHeaderIfRequired(displayKey);
-    return (SUCCESS);
+	// 4. Robust check for Content-Length (Fixes the Hyphen bug)
+	// Using a lowercase check is safer than relying on capitalization
+	std::string lowerKey = fieldName;
+	for (size_t i = 0; i < lowerKey.length(); ++i)
+		lowerKey[i] = tolower(lowerKey[i]);
+
+	if (lowerKey == "content-length")
+	{
+		size_t value_size_t;
+		// Now 'value' is strictly "15", so numeric parsing will succeed
+		if (numberIsPositive(value) && toNumber(value, value_size_t))
+		{
+			_headers[HTTP_FieldName::CONTENT_LENGTH] = toString(value_size_t);
+		}
+		else
+		{
+			_parseStatus = HTTP_Request::BAD_REQUEST;
+			return (FAILURE);
+		}
+	}
+	else
+	{
+		_headers[displayKey] = value;
+
+		if (displayKey == HTTP_FieldName::CONTENT_TYPE &&
+			value.find("multipart/form-data") != std::string::npos)
+			_isMultipartRequest = true;
+	}
+
+	_countHeaderIfRequired(displayKey);
+	return (SUCCESS);
+}
+
+// this function expects no CRLF at the end of the last header line
+// the last CRLF should be priorly removed!
+HTTP_Headers HTTP_Request::_parseMultipartHeaders(const std::string &multipartHeadersStr)
+{
+	std::vector<std::string> lines = Utils::split(multipartHeadersStr, CRLF);
+	
+	HTTP_Headers multipartHeaders;
+	for (size_t i = 0; i < lines.size(); ++i)
+	{
+		std::string::size_type colon_pos = lines[i].find(":", 0);
+		if (colon_pos == std::string::npos)
+			throw std::runtime_error("Malformed multipart header \"" + lines[i] + "\"");
+
+		// 1. Extract and store in variables (Fixes compilation error)
+		std::string fieldName = lines[i].substr(0, colon_pos);
+		std::string value = lines[i].substr(colon_pos + 1);
+
+		// 2. Trim both (Ensure " \t" is included for the key)
+		Utils::trim(fieldName, DISALLOWED_CHARS_IN_FIELD_VALUE);
+		Utils::trim(value, DISALLOWED_CHARS_IN_FIELD_VALUE);
+
+		if (!_fieldNameIsValid(fieldName) || !_headerValueIsValid(value))
+			throw std::runtime_error("Invalid field name or value in multipart header \"" + lines[i] + "\"");
+
+		// 3. Normalize for display/storage
+		std::string displayKey = capitaliseFirstLetters(fieldName);
+		multipartHeaders[displayKey] = value;
+	}
+
+	return (multipartHeaders);
+}
+
+int HTTP_Request::populateMultipartVars()
+{
+	std::string value = _headers[HTTP_FieldName::CONTENT_TYPE];
+	_multipartBoundary = _extractFromValue("boundary=", value);
+
+	size_t boundaryCount = Utils::countOccurrence(_body, _multipartBoundary);
+	if (boundaryCount == 1)
+	{
+		_parseStatus = HTTP_Request::BAD_REQUEST;
+		return (FAILURE);
+	}
+	else if (boundaryCount > 2)
+	{
+		_parseStatus = HTTP_Request::NOT_IMPLEMENTED;
+		return (FAILURE);
+	}
+
+	// find first boundary
+	std::string delimiter = "--" + _multipartBoundary;
+	size_t part_start = _body.find(delimiter);
+	if (part_start == std::string::npos)
+	{
+		_parseStatus = HTTP_Request::BAD_REQUEST;
+		return (FAILURE);
+	}
+
+	// move past first boundary and \r\n
+	part_start = _body.find(CRLF, part_start);
+	if (part_start == std::string::npos)
+	{
+		_parseStatus = HTTP_Request::BAD_REQUEST;
+		return (FAILURE);
+	}
+	part_start += 2;
+
+	// find end of headers (the blank line)
+	size_t headers_end = _body.find(DBL_CRLF, part_start);
+	if (headers_end == std::string::npos)
+	{
+		_parseStatus = HTTP_Request::BAD_REQUEST;
+		return (FAILURE);
+	}
+
+	// parse headers
+	std::string headersStr = _body.substr(part_start, headers_end - part_start);
+	HTTP_Headers multipartHeaders;
+	try {
+		multipartHeaders = _parseMultipartHeaders(headersStr);
+	} catch (std::exception &e) {
+		_parseStatus = HTTP_Request::BAD_REQUEST;
+		return (FAILURE);
+	}
+
+	// extract filename
+	if (multipartHeaders.count("Content-Disposition") != 1)
+	{
+		_parseStatus = HTTP_Request::BAD_REQUEST;
+		return (FAILURE);
+	}
+	std::string values = multipartHeaders["Content-Disposition"];
+	_multipartFilename = _extractFromValue("filename=", values);
+
+	// extract file content
+	size_t content_start = headers_end + 4; // Skip \r\n\r\n
+
+	// find ending boundary
+	std::string end_delimiter = + "--" + _multipartBoundary + "--";
+	size_t content_end = _body.find(end_delimiter, content_start);
+	if (content_end == std::string::npos)
+		std::cout << "[DEBUG] ERROR: could not find ending boundary in multipart request body!" << std::endl;
+
+	if (content_end != std::string::npos)
+		_multipartData = _body.substr(content_start, content_end - content_start);
+	
+	// if the data ends with a CRLF, remove it
+	if (Utils::endsWith(_multipartData, CRLF))
+		_multipartData = _multipartData.erase(_multipartData.size() - 2);
+	
+	return (SUCCESS);
 }
 
 /* this function can include other headers
@@ -423,6 +612,27 @@ int HTTP_Request::_fieldNameIsSecurityRisk(std::string fieldName)
 	return (FAILURE);
 }
 
+std::string HTTP_Request::_extractFromValue(const std::string &prefix, const std::string &value)
+{
+	std::vector<std::string> values = Utils::split(value, ';');
+
+	for (size_t i = 0; i < values.size(); ++i)
+	{
+		size_t prefix_pos = values[i].find(prefix);
+		if (prefix_pos != std::string::npos)
+		{
+			std::string value = values[i].substr(prefix_pos + prefix.size());
+			Utils::trim(value, DISALLOWED_CHARS_IN_FIELD_VALUE);
+			if (value[0] == '"')
+				value = Utils::removeQuote(value, '"');
+			Utils::trim(value, DISALLOWED_CHARS_IN_FIELD_VALUE);
+			return (value);
+		}
+	}
+
+	return ("");
+}
+
 bool HTTP_Request::ready()
 {
 	return (this->_parseStatus == HTTP_Request::COMPLETE ||
@@ -431,71 +641,89 @@ bool HTTP_Request::ready()
 
 void HTTP_Request::reset()
 {
-	_method = "";
-	_url = "";
-	_version = "";
-	_requestLine_completed = false;
-
-	_headers.clear();
-
-	_headers_completed = false;
-	_headersRequiredCount = 0;
-
-	_body = "";
-	_body_completed = false;
-
-	_parseStatus = INCOMPLETE;
+	_init_class_vars();
 }
 
 std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr)
 {
-	if (!hr._requestLine_completed) /* TO-DO: this is for debug only! */
+	if (hr._headers.size() == 0 && hr._body.size() == 0)
 	{
-		os << "[DEBUG]: HTTP_Request - incomplete header line";
+		os << "Empty HTTP_Request object! (was just initialized or all states were reset)" << std::endl;
 		return (os);
 	}
 
-	os << hr._method << " " << hr._url << " " << hr._version;
-
-	os << CRLF;
-
-	if (!hr._headers_completed) /* TO-DO: this is for debug only! */
+	if (DEBUG_MODE && !hr._requestLine_completed)
 	{
-		os << "[DEBUG]: HTTP_Request - incomplete headers";
+		os << "[DEBUG] HTTP_Request - incomplete header line";
 		return (os);
 	}
 
-	std::map<std::string, std::string, CaseInsensitiveCompare>::const_iterator it;
+	std::string line_start = "";
+	std::string line_ending = CRLF;
+
+	if (hr._isDisplayFriendlyRequest)
+	{
+		line_start = "|| ";
+		line_ending = VISIBLE_CRLF "\n";
+	}
+	os << line_start << hr._method << " " << hr._url << " " << hr._version;
+	os << line_ending;
+
+	if (DEBUG_MODE && !hr._headers_completed)
+	{
+		os << "[DEBUG] HTTP_Request - incomplete headers";
+		return (os);
+	}
+
+	HTTP_Headers::const_iterator it;
 	for (it = hr._headers.begin(); it != hr._headers.end(); ++it)
 	{
 		std::string fieldName = it->first;
 		std::string value = it->second;
 
-		os << fieldName << ": " << value << CRLF;
+		os << line_start << fieldName << ": " << value << line_ending;
 	}
 
-	os << CRLF;
+	os << line_start << line_ending;
 
-	if (!hr._body_completed)
+	if (DEBUG_MODE && !hr._body_completed)
 	{
-		os << "[DEBUG]: HTTP_Request - incomplete body";
+		if (!hr.hasHeader(HTTP_FieldName::TRANSFER_ENCODING) &&
+			!hr.hasHeader(HTTP_FieldName::CONTENT_LENGTH))
+			os << "[DEGUB] HTTP_Request is headers only (has no body)!";
+		else
+			os << "[DEBUG] HTTP_Request - incomplete body";
 		return (os);
 	}
 
+	if (hr._body.size() > 0)
+		os << line_start;
 	os.write(hr._body.c_str(), hr._body.size());
 	return (os);
 }
 
-
 void HTTP_Request::setBody(std::string data, size_t len)
 {
-    // Use append so chunked/split data isn't overwritten
-    _body.append(data);
-	(void)len;    
-    
-    // CRITICAL for CGI: Keep the length variable in sync!
-    // _bodyLen = _body.length(); 
-    
-    _body_completed = true;
-    this->_parseStatus = HTTP_Request::COMPLETE;
+	//_body.append(data);
+	_body.assign(data);
+	(void)len;
+
+	_body_completed = true;
+	this->_parseStatus = HTTP_Request::COMPLETE;
+}
+
+void HTTP_Request::appendToBody(std::string data, size_t len, bool isFinalAppend)
+{
+	// Use append so chunked/split data isn't overwritten
+	_body.append(data);
+	(void)len;
+
+	// CRITICAL for CGI: Keep the length variable in sync!
+	// _bodyLen = _body.length();
+
+	if (isFinalAppend)
+	{
+		_body_completed = true;
+		this->_parseStatus = HTTP_Request::COMPLETE; // AI: is this correct here?
+	}
 }

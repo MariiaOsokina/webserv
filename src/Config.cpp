@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   Config.cpp                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/05/11 17:53:52 by aaladeok          #+#    #+#             */
+/*   Updated: 2026/05/14 22:30:23 by aistok           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "Config.hpp"
 #include "Utils.hpp" //-->Needs implementation.
 #include <fstream>
@@ -139,7 +151,7 @@ void Config::validatePort(int port) {
 }
 
 void Config::validateMethod(const std::string& method) {
-    if (method != "GET" && method != "POST" && method != "DELETE") {
+    if (method != "HEAD" && method != "GET" && method != "POST" && method != "DELETE") {
         throw ConfigException("Invalid HTTP method: " + method + " (allowed: GET, POST, DELETE)", _current_line);
     }
 }
@@ -215,6 +227,11 @@ void Config::validateLocationBlock(const LocationConfig& location) {
     //If redirect is set, other directives should be minimal
     if (!location.redirect_url.empty() && !location.root.empty()) {
         throw ConfigException("Location with 'return' should not have 'root'");
+    }
+
+    //If root and alias are exclusive of each other
+    if (!location.root.empty() && !location.alias.empty()) {
+        throw ConfigException("Location should have either 'root' or 'alias'");
     }
 }
 
@@ -432,6 +449,12 @@ void Config::parseLocationBlock(std::ifstream& file, LocationConfig& location) {
             validatePath(value);
             location.root = value;
 
+        } else if (key == "alias") {
+            checkDupDirective(seen_directives, key);
+            seen_directives.insert(key);
+            validatePath(value);
+            location.alias = value;
+
         } else if (key == "autoindex") {
             checkDupDirective(seen_directives, key);
             seen_directives.insert(key);
@@ -448,8 +471,29 @@ void Config::parseLocationBlock(std::ifstream& file, LocationConfig& location) {
         } else if (key == "return") {
             checkDupDirective(seen_directives, key);
             seen_directives.insert(key);
-            location.redirect_url = value;
 
+            std::vector<std::string> parts = split(value, ' ');
+            if (parts.empty()) {
+                throw ConfigException("return requires at least a status code", _current_line);
+            }
+
+            // First token is the status code
+            char* endptr = NULL;
+            long code = std::strtol(parts[0].c_str(), &endptr, 10);
+            if (*endptr != '\0' || code < 100 || code > 599) {
+                throw ConfigException("return code must be a valid HTTP status (100-599): " + parts[0], _current_line);
+            }
+            location.redirect_code = static_cast<int>(code);
+
+            // Second token (optional) is the URL
+            if (parts.size() == 2) {
+                location.redirect_url = parts[1];
+            } else if (parts.size() == 1) {
+                location.redirect_url = "";  // bare return, no redirect target
+            } else {
+                throw ConfigException("return takes at most a code and a URL: " + value, _current_line);
+            }
+            
         } else if (key == "upload_path") {
             checkDupDirective(seen_directives, key);
             seen_directives.insert(key);

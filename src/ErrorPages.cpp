@@ -1,4 +1,14 @@
-#include <sstream>
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   ErrorPages.cpp                                     :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/05/13 03:08:23 by aistok            #+#    #+#             */
+/*   Updated: 2026/05/13 12:39:04 by aistok           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
 #include "ErrorPages.hpp"
 
@@ -23,13 +33,9 @@ std::string ErrorPages::_template =
 	"</body>\n"
 	"</html>\n";
 
-ErrorPages::ErrorPages()
-{
-}
+ErrorPages::ErrorPages() {}
 
-ErrorPages::~ErrorPages()
-{
-}
+ErrorPages::~ErrorPages() {}
 
 std::string ErrorPages::generate(const HTTP_StatusPair &status)
 {
@@ -68,8 +74,9 @@ std::string ErrorPages::getContent(const ServerConfig &sc, const HTTP_StatusPair
 				std::string content = Utils::getFileContent(pathOnServer);
 				return (content);
 			}
-			catch (std::exception &)
+			catch (std::exception &e)
 			{
+				// Fall back to built-in error page below
 			}
 		}
 	}

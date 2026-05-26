@@ -30,12 +30,17 @@
 	<div>
 		<button id="btn_readme">readme.md</button>
 		<button id="btn_upload_file">Upload a file</button>
+		<button id="btn_view_uploads">/view_uploads</button>
+		<button id="btn_simple_post_request">Simple POST request</button>
 		<button id="btn_list_files">List /files</button>
 		<button id="btn_list_files_delete_allowed">List /delete_test</button>
 		<button id="btn_list_files_delete_allowed_reset">Reset /delete_test</button>
 		<button id="btn_list_files_delete_allowed_cleanup">Cleanup /delete_test</button>
 		<button id="btn_test_cgi">Test CGI (Ade)</button>
 		<button id="btn_test_cgi_mo">Test CGI (MO)</button>
+		<button id="btn_test_cgi_python_mo">Test CGI with python (MO)</button>
+		<button id="btn_redir_code">Redirect by status code only</button>
+		<button id="btn_redir_code_url">Redirect by status code & url</button>
 	</div>
 
 	<iframe id="iframe" src="index_readme.html" frameborder="0" width="90%"></iframe>
@@ -43,12 +48,6 @@
 	<script>
 
 		var iframe = document.getElementById('iframe');
-
-		//iframe.onload = function () {
-		//	var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-		//	var height = iframeDoc.body.scrollHeight;
-		//	iframe.style.height = height;
-		//};
 
 		document.getElementById('btn_readme').addEventListener('click', function () {
 			iframe.src = 'index_readme.html'
@@ -59,6 +58,12 @@
 				iframeDoc.getElementById('fileInput').click();
 			}
 			iframe.src = 'index_upload.html';
+		});
+		document.getElementById('btn_view_uploads').addEventListener('click', function () {
+			iframe.src = '/view_uploads'
+		});
+		document.getElementById('btn_simple_post_request').addEventListener('click', function () {
+			iframe.src = '/index_simple_post_request.html'
 		});
 		document.getElementById('btn_list_files').addEventListener('click', function () {
 			iframe.src = '/files'
@@ -77,6 +82,15 @@
 		});
 		document.getElementById('btn_test_cgi_mo').addEventListener('click', function () {
 			iframe.src = 'index-mo.html'
+		});
+		document.getElementById('btn_test_cgi_python_mo').addEventListener('click', function () {
+			window.open('/cgi-bin/hello-mo.py', '_blank');
+		});
+		document.getElementById('btn_redir_code').addEventListener('click', function () {
+			window.open('/redir_code', '_blank');
+		});
+		document.getElementById('btn_redir_code_url').addEventListener('click', function () {
+			window.open('/redir_code_url', '_blank');
 		});
 
 	</script>

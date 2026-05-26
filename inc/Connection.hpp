@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/11 12:49:22 by mosokina          #+#    #+#             */
-/*   Updated: 2026/05/08 01:16:30 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/05/22 12:30:12 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,6 +61,8 @@ public:
 	void resetForNextRequest();
 	void setCgiPid(pid_t pid);
 	static const int MAX_HEADER_SIZE = 16384; // 16KB
+
+	bool isChunked() const; // AI: added
 
 
 private:

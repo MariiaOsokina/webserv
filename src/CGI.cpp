@@ -1,6 +1,19 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   CGI.cpp                                            :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/05/11 17:53:52 by aaladeok          #+#    #+#             */
+/*   Updated: 2026/05/25 20:21:36 by aistok           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "CGI.hpp"
 #include "Utils.hpp"
 #include "HTTP/HTTP.hpp"
+#include "WebServMacros.hpp"
 #include <unistd.h>
 #include <sys/wait.h>
 #include <cstring>
@@ -19,36 +32,36 @@ void CGI::setupEnvironment(const std::string& script_name) {
 	// 1. Core CGI/1.1 Variables
 	_env["GATEWAY_INTERFACE"] = "CGI/1.1";
 	_env["SERVER_PROTOCOL"] = _request.getVersion();
-	_env["SERVER_SOFTWARE"] = "webserv/1.0";
+	_env["SERVER_SOFTWARE"] = WEBSERV_NAME; // AI: fix //"webserv/1.0";
 	_env["REQUEST_METHOD"] = _request.getMethod();
 
-	// 2. Parse URI, Query String, and Path Info
-	std::string uri = _request.getURL(); 
-	size_t query_pos = uri.find('?');
-	// std::string script_path = uri;
-	std::string query_string = "";
-
-	if (query_pos != std::string::npos) {
-		// script_path = uri.substr(0, query_pos);
-		query_string = uri.substr(query_pos + 1);
-	}
-
-	// MO: Required for php-cgi to run properly
-	_env["REDIRECT_STATUS"] = "200"; //Newly added
-	_env["SCRIPT_NAME"] = script_name; 
-	_env["QUERY_STRING"] = query_string;
-	_env["PATH_INFO"] = extractPathInfo(uri, script_name);
+    std::string file_ext = Utils::toLowerCase(Utils::getExtension(script_name));
+    if (file_ext == ".php")
+    {
+	    // 2. Parse URI, Query String, and Path Info
+	    // MO: Required for php-cgi to run properly
+	    _env["REDIRECT_STATUS"] = "200"; //Newly added
+	    //_env["SCRIPT_NAME"] = script_name;
+        _env["SCRIPT_NAME"] = _request.getURLWithoutParams();
+	    _env["PATH_INFO"] = extractPathInfo(_request.getURL(), script_name); // AI: updated
+    }
+    else
+    {
+        _env["PATH_INFO"] = _request.getURLWithoutParams();
+    }
+    _env["QUERY_STRING"] = _request.getQueryString(); // AI: updated for clean code
 	
 	// 3. Dynamic Absolute Pathing (Fixes the hardcoded "/home/..." string)
 	char cwd[1024];
 	if (getcwd(cwd, sizeof(cwd)) != NULL) {
-		std::string absolute_path = std::string(cwd);
+		std::string absolute_path = std::string(cwd); // AI: suggesting to use Utils::getcwd() to maintain a clean code base
 		// Ensure we don't double up on slashes if script_name starts with one
-		if (!script_name.empty() && script_name[0] == '/') {
-			_env["SCRIPT_FILENAME"] = absolute_path + script_name;
-		} else {
-			_env["SCRIPT_FILENAME"] = absolute_path + "/" + script_name;
-		}
+		//if (!script_name.empty() && script_name[0] == '/') {
+		//	_env["SCRIPT_FILENAME"] = absolute_path + script_name;
+		//} else {
+		//	_env["SCRIPT_FILENAME"] = absolute_path + "/" + script_name;
+		//}
+        _env["SCRIPT_FILENAME"] = Utils::joinPath(absolute_path, script_name); // AI: updated for clean code
 	} else {
 		// Fallback in case getcwd fails
 		_env["SCRIPT_FILENAME"] = script_name;
@@ -63,11 +76,6 @@ void CGI::setupEnvironment(const std::string& script_name) {
     size_t actual_body_length = _request.getBody().length();
     _env["CONTENT_LENGTH"] = Utils::toString(actual_body_length);
 
-    // std::map<std::string, std::string, CaseInsensitiveCompare>::const_iterator itCT = headers.find("content-type");
-    // if (itCT != headers.end()) {
-    //     _env["CONTENT_TYPE"] = itCT->second;
-    // }
-
 	std::map<std::string, std::string, CaseInsensitiveCompare>::const_iterator itCT = headers.find("content-type");
 	if (itCT != headers.end()) {
 		_env["CONTENT_TYPE"] = itCT->second;
@@ -81,6 +89,7 @@ void CGI::setupEnvironment(const std::string& script_name) {
         if (keyLow == "content-length" || keyLow == "content-type") {
             continue;
         }
+
         // Format: HTTP_HEADER_NAME (e.g., User-Agent -> HTTP_USER_AGENT)
         std::string name = "HTTP_" + Utils::toUpperCase(it->first);
         for (size_t i = 0; i < name.length(); ++i) {
@@ -171,6 +180,7 @@ std::pair<pid_t, int>CGI::executeNonBlocking() {
 	
 	int pipe_in[2]; //For sending request body into child process
 	int pipe_out[2]; //For receiving CGI output from child process
+    int child_original_stdout = 1001; // AI: FOR DEBUG ONLY!!!
 
 	if (pipe(pipe_in) < 0 || pipe(pipe_out) < 0) {
 		return (std::make_pair(-1, -1));
@@ -187,6 +197,7 @@ std::pair<pid_t, int>CGI::executeNonBlocking() {
 	}
 	if (pid == 0) {
 		//Child process
+        dup2(STDOUT_FILENO, child_original_stdout); //AI: DEBUG ONLY!
 		//Redirect stdin from pipe_in
 		dup2(pipe_in[0], STDIN_FILENO);
 		close(pipe_in[0]);
@@ -197,19 +208,13 @@ std::pair<pid_t, int>CGI::executeNonBlocking() {
 		close(pipe_out[1]);
 		close(pipe_out[0]);
 
-		//change to scrip directory: 
-		//some CGI scripts (especially PHP) expect to be executed from dir they live in
-        std::string dir = Utils::getDirectory(_script_path);
-        if (!dir.empty()) {
-            chdir(dir.c_str());
-        }
-
 		// --- ADD THIS TO EXTRACT JUST THE FILENAME ---
-        std::string filename = _script_path;
-        size_t lastSlash = _script_path.find_last_of('/');
-        if (lastSlash != std::string::npos) {
-            filename = _script_path.substr(lastSlash + 1);
-        }
+        //std::string filename = _script_path;
+        //size_t lastSlash = _script_path.find_last_of('/');
+        //if (lastSlash != std::string::npos) {
+        //    filename = _script_path.substr(lastSlash + 1);
+        //}
+        std::string filename = Utils::getFileName(_script_path); // AI: updated, for clean code
         // ---------------------------------------------
 
 		//Prep args
@@ -217,16 +222,34 @@ std::pair<pid_t, int>CGI::executeNonBlocking() {
 		// args[0] = const_cast<char*>(_cgi_path.c_str());
 		// args[1] = NULL;
 
-		char* args[3]; 
-		args[0] = const_cast<char*>(_cgi_path.c_str());
+		char* args[3];
+        std::string executableWithAbsolutePath = Utils::getAbsolutePath(_cgi_path); // AI: changed to absolute path, because later there will be a chdir, just before execve !!!
+        args[0] = const_cast<char*>(executableWithAbsolutePath.c_str());
 		args[1] = const_cast<char*>(filename.c_str());
 		args[2] = NULL;
 
 		//prep env
 		char** env = createEnvArray();
-		
-		//Execute CGI
-		execve(_cgi_path.c_str(), args, env);
+
+        // AI: moved chdir just before the execution is done,
+        //     so that other file operations are performed in
+        //     the correct directory
+        //
+		//change to scrip directory:
+		//some CGI scripts (especially PHP) expect to be executed from dir they live in
+        std::string scritp_file_dir = Utils::getDirectory(_script_path);
+        if (!scritp_file_dir.empty()) {
+            chdir(scritp_file_dir.c_str());
+        }
+
+        // AI: DEBUGGING ONLY
+        //dprintf(child_original_stdout, "*** CHILD CGI:\n");
+        //dprintf(child_original_stdout, "*** EXECUTING: %s %s\n", args[0], args[1]);
+        //std::string cwd =  Utils::getcwd();
+        //dprintf(child_original_stdout, "*** cwd = %s\n", cwd.c_str());
+
+        //Execute CGI
+		execve(args[0], args, env); // AI: updated for clean code
 
 		// ==========================================
 		// IF WE REACH HERE, EXECVE FAILED!
@@ -321,6 +344,9 @@ HTTP_Response CGI::parseCGIOutput(const std::string& output) {
             if (line.empty()) continue;
             
             // --- NPH MODE DETECTED ---
+            // AI NOTES: NPH = Non-Parsed Header or No-Parsed Header
+            // these headers are sent from the CGI script or executable, along
+            // with the CGI body
             if (i == 0 && line.length() > 5 && line.substr(0, 5) == "HTTP/") {
                 std::vector<std::string> parts = Utils::split(line, ' ');
                 if (parts.size() >= 2) {

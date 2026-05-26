@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   Config.hpp                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/05/11 17:53:52 by aaladeok          #+#    #+#             */
+/*   Updated: 2026/05/14 21:39:49 by aistok           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
@@ -12,6 +24,7 @@ struct LocationConfig
     std::string path;
     std::vector<std::string> allowed_methods;
     std::string root;
+    std::string alias; // AI: added this so that we can run the 42 tester
     bool autoindex;
     std::string index;
     int redirect_code;
@@ -34,7 +47,7 @@ struct ServerConfig
     std::string root;
     std::string index;
 
-    ServerConfig() : host("localhost"), client_max_body_size(1048576) {}//1mb default..
+    ServerConfig() : host(""), client_max_body_size(0) {}//1mb default..
 };
 
 class ConfigException : public std::exception {

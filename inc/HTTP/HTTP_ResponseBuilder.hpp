@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/20 10:48:39 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/10 15:00:23 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/24 14:12:37 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,15 +21,37 @@
 #include "DirectoriesToHTML.hpp"
 #include "CGI.hpp"
 
+#include <exception>
+#include <string>
+
 class HTTP_ResponseBuilder
 {
 public:
+
+	class Exception : public std::exception
+	{
+	public:
+		Exception(const HTTP_StatusPair &status, const std::string &msg);
+
+		virtual ~Exception() throw();
+
+		virtual const char *what() const throw();
+
+		HTTP_StatusPair getStatus() const;
+
+	private:
+		HTTP_StatusPair _status;
+		std::string _message;
+	};
+
 	HTTP_ResponseBuilder();
 	HTTP_ResponseBuilder(const ServerConfig &sc);
 	~HTTP_ResponseBuilder();
 
 	void build(HTTP_Response &response, HTTP_Request &request);
 	void reset();
+
+	static ssize_t getClientMaxBodySize(const ServerConfig &sc, const HTTP_Request &req, HTTP_Response &res);
 
 private:
 	ServerConfig _serverConfig;
@@ -44,13 +66,15 @@ private:
 	void build_response_for_POST(HTTP_Response &response, HTTP_Request &request);
 	void build_response_for_DELETE(HTTP_Response &response, HTTP_Request &request);
 
-	bool locationHasMethod(std::string method);
+	bool locationHasMethod(const LocationConfig &location, std::string method);
+	static const LocationConfig &locationGetBestMatch(const ServerConfig &sc, const HTTP_Request &req);
 	const LocationConfig &locationGetBestMatch(const HTTP_Request &request);
-	std::string translateUriToPath(const HTTP_Request &request, bool asAlias);
+	std::string translateUriToPath(const HTTP_Request &request);
 
 	void setResponse(HTTP_Response &response, const HTTP_StatusPair &status);
+	static void setResponse(HTTP_Response &response, const HTTP_StatusPair &status, const ServerConfig &sc);
 
-	void setResponseRedirect(HTTP_Response &response, const int statusCode, const std::string &url);
+	static void setResponseRedirect(HTTP_Response &response, const int statusCode, const std::string &url);
 };
 
 #endif // HTTP_RESPONSEBUILDER_HPP
