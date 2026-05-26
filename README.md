@@ -25,9 +25,7 @@ Manual test via a web browser (we used FireFox):
 
 1. make and then run the web server:
 
-   make
-
-   ./bin/webserv config/advanced.conf
+   make run
 
 2. after the web server is up and running, navigate to
    http://localhost:8080 where you should see a simple html
@@ -73,22 +71,23 @@ Manual test via a web browser (we used FireFox):
 Automated test, created by Maria, to test the web server's main
 core functionality:
 
-1. make
-2. ./bin/webserv ./config/advanced.conf
-3. python3 ./tests/test.py
+1. in one terminal run:
+   
+   make run
+
+2. in another terminal run:
+
+   make core_tests
 
 Automated test, running the 42 tester:
 
-1. make (to compile the webserv binary in ./bin/webserv)
-2. run:
-   
-   ./bin/webserv config/42tester.conf
-   (to start the webserv with the correct config as required by
-   the 42 tester)
-   
-3. in a separate terminal, run:
-   
-   ./tests/42tester http://localhost:8080
+1. in one terminal run:
+
+   make 42config
+
+2. in another terminal run:
+
+   make 42tester   
 
    And follow the instructions (just hit ENTER) as everything
    is configured as asked (www_42tester has the needed files

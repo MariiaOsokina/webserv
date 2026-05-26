@@ -6,7 +6,7 @@
 #    By: aistok <aistok@student.42london.com>       +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/01/14 18:42:19 by aistok            #+#    #+#              #
-#    Updated: 2026/05/26 13:45:27 by aistok           ###   ########.fr        #
+#    Updated: 2026/05/26 14:45:17 by aistok           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -97,6 +97,7 @@ $(OBJ_DIR) $(BIN_DIR) $(MAKE_DB):
 www/delete_test:
 	$(call anim,Creating,created,$@,./tests/prep_www_for_delete_testing.sh)
 
+# this is for Makefile debug only
 test:
 	@echo SRC_DIRS:
 	@echo $(SRC_DIRS)
@@ -108,9 +109,24 @@ test:
 	@echo $(OBJ_FILES)
 
 run: all
+	@echo
+	@echo "    NOTE: you may open a web browser and navigate to http://localhost:8080"
+	@echo "          or you may use curl or wget or other tools to send requests to"
+	@echo "          this web server"
+	@echo
 	@$(NAME)
 
-runtests:
+42config: all
+	@echo
+	@echo "    NOTE: in another terminal, please run"
+	@echo "          make 42tester"
+	@echo
+	@$(NAME) config/42tester.conf
+
+42tester: all
+	@./tests/42tester http://localhost:8080
+
+runtests core_tests: all
 	@/bin/bash tests/run_python_tests.sh
 
 set_executables: | $(MAKE_EXEC)
@@ -131,6 +147,7 @@ re: fclean all
 
 .PHONY: all clean fclean re \
 		test \
-		runtests \
+		runtests core_tests \
 		set_executables \
-		run
+		run \
+		42config 42tester
