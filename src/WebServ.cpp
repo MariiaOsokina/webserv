@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   WebServ.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/14 19:03:57 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/24 11:18:43 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/26 19:33:12 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -117,6 +117,10 @@ void WebServ::run(void)
 				continue;
 
 			// 1. HANDLE CGI ---
+            if (_isCGIStdinFd(_pollFds[i].fd)) {
+                _handleCGIInput(&i);
+                continue;
+            }
             if (_isCGISocket(_pollFds[i].fd)) {
                 if (_pollFds[i].revents & (POLLIN | POLLHUP)) {
                     _handleCGIOutput(&i);
@@ -453,21 +457,25 @@ bool WebServ::_isCGISocket(int fd) const {
     return (_cgiProcesses.find(fd) != _cgiProcesses.end());
 }
 
+bool WebServ::_isCGIStdinFd(int fd) const {
+    return (_cgiStdinToStdout.find(fd) != _cgiStdinToStdout.end());
+}
+
 bool WebServ::_executeCGI(int connFd, const std::string& cgiPath, const std::string& scriptPath) {
     Connection *conn = _fdToConnMap[connFd];
 
     CGI cgi(cgiPath, scriptPath, conn->getRequest());
 
     //Start non-blocking CGI execution.
-    std::pair<pid_t, int> res = cgi.executeNonBlocking();
+    CGIHandles h = cgi.executeNonBlocking();
 
-    if (res.first == -1) {
+    if (!h.ok()) {
 
         std::cerr << "[WebServ] CGI fork failed for FD " << connFd << std::endl;
         conn->getResponse().setStatus(HTTP_Status::INTERNAL_SERVER_ERROR);
         conn->prepareResponse();
 		conn->setState(Connection::ERROR); //MO: If fork fails, the request is dead. Set to ERROR
-        
+
         // Find the client/connection in poll and set them to WRITE immediately
         for (size_t i = 0; i < _pollFds.size(); ++i) {
             if (_pollFds[i].fd == connFd) {
@@ -477,22 +485,137 @@ bool WebServ::_executeCGI(int connFd, const std::string& cgiPath, const std::str
         }
         return false; //Fork failed.
     }
-    conn->setCgiPid(res.first);
-    //We need to store CGI process info
-    CGIProcess process;
-    process.pid = res.first;
-    process.stdoutFd = res.second;
-    process.connFd = connFd;
-    process.startTime = time(NULL);
+    conn->setCgiPid(h.pid);
 
-    _cgiProcesses[res.second] = process;
-    
+    // Seed the CGI process record. The body has to outlive the request
+    // because we drain it to the CGI stdin pipe across many POLLOUT
+    // events. Move it (swap, O(1)) out of the Connection's Request
+    // rather than copying — under concurrent 100 MB uploads, copying
+    // doubled per-request memory and triggered OOM kills. The
+    // Connection does not need the body anymore once the CGI has been
+    // started (the response is built from CGI output, not the request).
+    CGIProcess process;
+    process.pid         = h.pid;
+    process.stdoutFd    = h.stdoutFd;
+    process.stdinFd     = h.stdinFd;
+    process.connFd      = connFd;
+    conn->getRequest().swapBody(process.inputBody);
+    process.inputOffset = 0;
+    process.startTime   = time(NULL);
+
+    _cgiProcesses[h.stdoutFd] = process;
+
 	// MO: Set to WAITING_FOR_CGI here, because the fork succeeded!
     conn->setState(Connection::WAITING_FOR_CGI);
     //We set client/connection state to waiting state i.e: not reading or writing.
-    _addNewFdtoPool(res.second, POLLIN);
+    _addNewFdtoPool(h.stdoutFd, POLLIN);
+
+    // If there is a body to send, register the stdin FD with POLLOUT so
+    // the event loop drains it in chunks. If there is no body, close the
+    // write end now — that sends EOF to the CGI script immediately.
+    if (process.inputBody.empty()) {
+        close(h.stdinFd);
+        _cgiProcesses[h.stdoutFd].stdinFd = -1;
+    } else {
+        _cgiStdinToStdout[h.stdinFd] = h.stdoutFd;
+        _addNewFdtoPool(h.stdinFd, POLLOUT);
+    }
 
     return true;
+}
+
+// Closes the CGI stdin FD, removes it from the poll set and the
+// stdin->stdout lookup, and marks the CGIProcess as having no stdin.
+// Safe to call when stdinFd is already -1.
+//
+// `cursor`: optional pointer to the surrounding loop's index. The
+// poll-array removal is O(1) swap+pop, which moves whatever was at the
+// back into the freed slot. If that back-element happened to be the
+// entry the caller is currently sitting on (or one it has not yet
+// processed), the caller's index would silently point at the wrong
+// element. Passing a cursor lets this helper decrement it so the loop
+// stays consistent. Pass NULL when there is no surrounding loop index
+// to keep honest (e.g. teardown paths).
+void WebServ::_closeCGIStdin(CGIProcess& cgi, size_t *cursor) {
+    int fd = cgi.stdinFd;
+    if (fd < 0) {
+        return;
+    }
+    close(fd);
+    cgi.stdinFd = -1;
+    _cgiStdinToStdout.erase(fd);
+    for (size_t i = 0; i < _pollFds.size(); ++i) {
+        if (_pollFds[i].fd == fd) {
+            _pollFds[i] = _pollFds.back();
+            _pollFds.pop_back();
+            if (cursor && *cursor != static_cast<size_t>(-1) && i <= *cursor) {
+                (*cursor)--;
+            }
+            break;
+        }
+    }
+}
+
+void WebServ::_handleCGIInput(size_t *index) {
+    int stdinFd = _pollFds[*index].fd;
+
+    std::map<int, int>::iterator lookup = _cgiStdinToStdout.find(stdinFd);
+    if (lookup == _cgiStdinToStdout.end()) {
+        // Unknown stdin FD — defensive: remove from poll set.
+        _pollFds[*index] = _pollFds.back();
+        _pollFds.pop_back();
+        (*index)--;
+        return;
+    }
+    int stdoutFd = lookup->second;
+    std::map<int, CGIProcess>::iterator cgiIt = _cgiProcesses.find(stdoutFd);
+    if (cgiIt == _cgiProcesses.end()) {
+        _pollFds[*index] = _pollFds.back();
+        _pollFds.pop_back();
+        _cgiStdinToStdout.erase(lookup);
+        (*index)--;
+        return;
+    }
+    CGIProcess& cgi = cgiIt->second;
+
+    // Error on the pipe (e.g. CGI died before reading body) — abort cleanly.
+    if (_pollFds[*index].revents & (POLLERR | POLLNVAL)) {
+        std::cerr << "[WebServ] CGI stdin pipe error (revents=" << _pollFds[*index].revents
+                  << ") on FD " << stdinFd << std::endl;
+        (*index)--;          // _cleanupCGI removes stdoutFd; this stdin entry stays
+        _cleanupCGI(stdoutFd);
+        return;
+    }
+
+    size_t remaining = cgi.inputBody.size() - cgi.inputOffset;
+    ssize_t n = write(stdinFd,
+                      cgi.inputBody.data() + cgi.inputOffset,
+                      remaining);
+
+    if (n < 0) {
+        // We are only here because poll() said POLLOUT, so EAGAIN is
+        // unexpected — but if it happens, just wait for the next event.
+        // For any other error (most commonly EPIPE because the CGI
+        // closed stdin early), tear the whole thing down.
+        std::cerr << "[WebServ] write() to CGI stdin failed on FD " << stdinFd << std::endl;
+        (*index)--;
+        _cleanupCGI(stdoutFd);
+        return;
+    }
+
+    cgi.inputOffset += static_cast<size_t>(n);
+
+    // Treat startTime as a "last activity" watchdog. Without this, large
+    // bodies under concurrency get killed at CGI_TIMEOUT even though the
+    // script is making steady progress — every write to stdin / read from
+    // stdout pushes the deadline forward.
+    cgi.startTime = time(NULL);
+
+    if (cgi.inputOffset >= cgi.inputBody.size()) {
+        // Whole body written — close stdin to send EOF to the CGI.
+        // _closeCGIStdin adjusts *index for us via the cursor argument.
+        _closeCGIStdin(cgi, index);
+    }
 }
 
 void WebServ::_handleCGIOutput(size_t *index) {
@@ -510,28 +633,48 @@ void WebServ::_handleCGIOutput(size_t *index) {
     std::cout << "[WebServ] CGI bytes read " <<bytes_read << std::endl;
     if (bytes_read > 0) {
         cgi.output.append(buffer, bytes_read);
+        // Reset the watchdog (see _handleCGIInput) — output is progress too.
+        cgi.startTime = time(NULL);
     } else if (bytes_read == 0) {
         // ==========================================
-        // EOF - CGI FINISHED SUCCESSFULLY
+        // EOF - CGI CLOSED STDOUT
         // ==========================================
-        
-        // 1. Wait for child process to prevent zombies
-        int status;
-        waitpid(cgi.pid, &status, WNOHANG);
-        
+
+        // 1. Reap the child. Blocking wait is safe here: read() returned 0
+        // only after every writer closed the pipe, so the child has either
+        // exited or is moments from it. WNOHANG would risk leaving a zombie
+        // if the kernel hasn't marked the child reapable yet.
+        int status = 0;
+        waitpid(cgi.pid, &status, 0);
+
+        // The script "succeeded" only if it exited cleanly AND produced
+        // some output. Per CGI/1.1 the script MUST emit at least a header,
+        // so empty output is a protocol violation; non-zero exit or death
+        // by signal is a crash. Both → 500.
+        bool exitedCleanly = WIFEXITED(status) && WEXITSTATUS(status) == 0;
+        bool cgiFailed     = !exitedCleanly || cgi.output.empty();
+
         // 2. Find client/connection and send response
         std::map<int, Connection*>::iterator it = _fdToConnMap.find(cgi.connFd);
         if (it != _fdToConnMap.end()) {
             Connection* conn = it->second;
-            
-            // Check if CGI produced any output
-            if (cgi.output.empty()) {
-                std::cout << "[WebServ] CGI produced no output - likely execution failed" << std::endl;
+
+            if (cgiFailed) {
+                if (WIFSIGNALED(status)) {
+                    std::cout << "[WebServ] CGI killed by signal " << WTERMSIG(status) << std::endl;
+                } else if (!exitedCleanly) {
+                    std::cout << "[WebServ] CGI exited with status " << WEXITSTATUS(status) << std::endl;
+                } else {
+                    std::cout << "[WebServ] CGI produced no output - likely execution failed" << std::endl;
+                }
                 conn->getResponse().setStatus(HTTP_Status::INTERNAL_SERVER_ERROR);
                 conn->setState(Connection::ERROR);
-            } else {                
-                // Parse CGI output into response
-                conn->getResponse() = CGI::parseCGIOutput(cgi.output);
+            } else {
+                // Build the response in place. The previous form
+                // `conn->getResponse() = CGI::parseCGIOutput(output)`
+                // implicitly copied the (potentially huge) body during
+                // operator=.
+                CGI::parseCGIOutput(cgi.output, conn->getResponse());
                 conn->setState(Connection::REQUEST_READY);
             }
 
@@ -549,7 +692,13 @@ void WebServ::_handleCGIOutput(size_t *index) {
             }
         }
         
-        // 3. Clean up pipes and maps manually (Since it was successful, we don't kill it)
+        // 3. Clean up pipes and maps manually (Since it was successful, we don't kill it).
+        // Defensive: if the CGI exited without reading the entire body, stdinFd
+        // may still be open and registered with POLLOUT — close it before we
+        // erase the CGIProcess record so we don't leak it. Pass `index` so
+        // the helper adjusts our loop cursor if the swap/pop moves what's
+        // at *index.
+        _closeCGIStdin(cgiIt->second, index);
         close(cgiFd);
         _fdToConnMap.erase(cgiFd); // MO: Fixed map leak!
         _cgiProcesses.erase(cgiIt);
@@ -638,23 +787,33 @@ void WebServ::_closeCGIPipe(size_t index) {
     _pollFds.pop_back();
 }
 
-// A silent killer: Just kills the process, closes the pipe, and removes from poll.
-// Does NOT touch the Connection object or send HTTP errors.
+// A silent killer: Just kills the process, closes both pipes, and removes
+// from poll. Does NOT touch the Connection object or send HTTP errors.
 void WebServ::_terminateCGIProcess(int cgiFd) {
     std::map<int, CGIProcess>::iterator it = _cgiProcesses.find(cgiFd);
     if (it == _cgiProcesses.end()) return;
 
-    // 1. Kill process and prevent zombies
+    // 1. Close the stdin side first (if still open). Tearing down the
+    // write end before SIGKILL ensures any in-flight write() in the
+    // child would see EPIPE rather than blocking — and it removes the
+    // stdin FD from the poll set so the next iteration of the loop
+    // doesn't try to dispatch on a dead FD. No loop cursor here — this
+    // helper is also called from cleanup paths outside the poll loop.
+    _closeCGIStdin(it->second, NULL);
+
+    // 2. Kill process and prevent zombies. Note: use blocking waitpid
+    // after SIGKILL — the child becomes reapable almost instantly and
+    // WNOHANG risks leaving a zombie if the kernel hasn't marked it yet.
     kill(it->second.pid, SIGKILL);
-    waitpid(it->second.pid, NULL, WNOHANG);
-    
-    // 2. Close the pipe
+    waitpid(it->second.pid, NULL, 0);
+
+    // 3. Close the stdout pipe
     close(cgiFd);
-    
-    // 3. Safely remove from connection map
+
+    // 4. Safely remove from connection map
     _fdToConnMap.erase(cgiFd);
-    
-    // 4. Remove from poll array (O(1) efficiency)
+
+    // 5. Remove stdout FD from poll array (O(1) efficiency)
     for (size_t i = 0; i < _pollFds.size(); ++i) {
         if (_pollFds[i].fd == cgiFd) {
             _pollFds[i] = _pollFds.back();
@@ -662,7 +821,7 @@ void WebServ::_terminateCGIProcess(int cgiFd) {
             break;
         }
     }
-    
-    // 5. Remove from CGI map
+
+    // 6. Remove from CGI map
     _cgiProcesses.erase(it);
 }

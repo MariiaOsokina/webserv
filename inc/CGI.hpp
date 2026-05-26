@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   CGI.hpp                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/11 17:53:52 by aaladeok          #+#    #+#             */
-/*   Updated: 2026/05/24 04:47:59 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/26 19:22:50 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,17 +26,35 @@ class HTTP_Response;
 class HTTP_Request;
 
 
+// Triple returned by executeNonBlocking(): pid, stdin (parent writes
+// the body), stdout (parent reads CGI output). All -1 on failure.
+struct CGIHandles {
+    pid_t   pid;
+    int     stdinFd;
+    int     stdoutFd;
+
+    CGIHandles() : pid(-1), stdinFd(-1), stdoutFd(-1) {}
+    static CGIHandles failure() { return CGIHandles(); }
+    bool ok() const { return pid > 0; }
+};
+
+
 class CGI {
     public:
         CGI(const std::string& cgi_path, const std::string& script_path, const HTTP_Request& request);
         ~CGI();
 
-        // NON-BLOCKING: Start CGI process and return pipe fd for reading output
-        // Returns: pair<pid, stdoutFd> or <-1, -1> on error
-        std::pair<pid_t, int> executeNonBlocking();
+        // NON-BLOCKING: Start CGI process. Caller is responsible for
+        // writing the request body to stdinFd (non-blocking) and reading
+        // CGI output from stdoutFd. Both FDs are non-blocking on return.
+        CGIHandles executeNonBlocking();
 
-        //Parse CGI output into HTTP response
-        static HTTP_Response parseCGIOutput(const std::string& output);
+        // Parse CGI output directly into `response`. Both arguments are
+        // *consumed*: `output` is emptied (body bytes swapped into the
+        // response) and `response` is overwritten in place. Avoids the
+        // implicit copy that `response = parseCGIOutput(...)` would do
+        // on a multi-hundred-MB CGI body.
+        static void parseCGIOutput(std::string& output, HTTP_Response& response);
 
         //check if a file extension can be handled by CGI.
         static bool forCGIResponse(const std::string& filepath, const std::map<std::string, std::string>& cgi_map);

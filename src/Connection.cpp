@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/11 12:49:10 by mosokina          #+#    #+#             */
-/*   Updated: 2026/05/25 11:05:42 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/26 19:24:46 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -196,7 +196,11 @@ bool Connection::shouldClose() const
 void Connection::prepareResponse()
 {
 	_responseBuilder.build(_response, _request); //MO: CGI starts here!!
-	_rawResponse = _response.serialize();
+	// Build wire bytes directly into _rawResponse and transfer body
+	// ownership in O(1). Avoids the ostringstream double-copy that was
+	// peaking at ~3× the body and OOM-killing the server under
+	// concurrent 100 MB uploads.
+	_response.serializeInto(_rawResponse);
 	_bytesSent = 0;
 }
 

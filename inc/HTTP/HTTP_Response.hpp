@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP_Response.hpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/22 10:51:28 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/26 19:27:57 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,6 +39,11 @@ public:
 	void setStatus(const HTTP_StatusPair &status);
 
 	std::string serialize() const;
+	// Build the wire bytes directly into `out` and move the body out
+	// of this response (leaving _body empty). One body copy in total,
+	// instead of the 2–3 ostringstream-based serialize() incurs. Used
+	// on the hot path; large CGI responses depend on this to fit in RAM.
+	void serializeInto(std::string &out);
 	void setContent(const std::string &text);
 	void appendToContent(const std::string &data);
 	
@@ -47,6 +52,14 @@ public:
 	
 	void setCGIGenerated(const bool value);
 	bool isCGIGenerated();
+	// O(1) ownership transfer of the body. Used during CGI output
+	// parsing (absorb the body without a copy) and after serialize()
+	// (free the body once it has been baked into the raw response).
+	// Without these, a 100 MB CGI body lived simultaneously in the CGI
+	// buffer, the Response, and the Connection's _rawResponse — enough
+	// to OOM-kill the server under concurrent uploads.
+	void swapBody(std::string &dst);
+	void clearBody();
 	void reset();
 
 	void setCgiPath(const std::string &path);

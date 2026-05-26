@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP_Request.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/23 21:20:12 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/26 19:26:13 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,6 +78,11 @@ public:
 	const std::string &getVersion() const;
 	const std::map<std::string, std::string, CaseInsensitiveCompare> getHeaders() const;
 	const std::string &getBody() const;
+	// Swap the request body with `dst`, transferring ownership in O(1)
+	// (no copy). Used to hand a large request body to the CGI worker
+	// without doubling memory — once CGI is started the Connection does
+	// not need the body anymore.
+	void swapBody(std::string &dst);
 	std::string serialize() const;
 	
 	bool isMultipartRequest() const;
