@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/20 10:48:39 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/24 14:30:27 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/25 18:42:10 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,9 +64,9 @@ HTTP_ResponseBuilder &HTTP_ResponseBuilder::operator=(const HTTP_ResponseBuilder
 void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 {
 	// DEBUG - TO-DO: remove these!
-	std::cout << "++ GOT REQUEST ++" << std::endl;
-	std::cout << request.getDisplayFriendlyRequest();
-	std::cout << "++ REQUEST FIN ++" << std::endl;
+	//std::cout << "++ GOT REQUEST ++" << std::endl;
+	//std::cout << request.getDisplayFriendlyRequest();
+	//std::cout << "++ REQUEST FIN ++" << std::endl;
 
 	int parseStatus = request.getParseStatus();
 
@@ -106,9 +106,28 @@ void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 		return;
 	}
 
-	if (_location.redirect_code > 0) // TO-DO: needs improving, redirect_code is always ZERO from config parser
+	if (_location.redirect_code > 0 || !_location.redirect_url.empty())
 	{
-		HTTP_ResponseBuilder::setResponseRedirect(response, _location.redirect_code, _location.redirect_url);
+		int statusCode = _location.redirect_code;
+		std::string url = _location.redirect_url;
+
+		if (statusCode > 0 && !url.empty())
+		{
+			response.setStatus(HTTP_Status::fromCode(statusCode));
+			response.getHeaders()[HTTP_FieldName::LOCATION] = url;
+			response.setContent("");
+			return;
+		}
+		else if (statusCode == 0 && !url.empty())
+		{
+			response.setStatus(HTTP_Status::MOVED_PERMANENTLY);
+			response.getHeaders()[HTTP_FieldName::LOCATION] = url;
+			response.setContent("");
+			return;
+		}
+
+		response.setStatus(HTTP_Status::fromCode(statusCode));
+		response.setContent(ErrorPages::getContent(_serverConfig, HTTP_Status::fromCode(statusCode)));
 		return;
 	}
 
