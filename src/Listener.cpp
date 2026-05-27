@@ -12,7 +12,7 @@
 
 #include "Listener.hpp"
 
-Listener::Listener(const ServerConfig &config) : _config(config), _listenFd(-1)
+Listener::Listener(const ServerConfig &config, int port) : _config(config), _port(port), _listenFd(-1)
 {
 	_address = sockaddr_in();
 }
@@ -61,13 +61,13 @@ void Listener::initSocket()
 		throw std::runtime_error("Failed to set non-blocking mode");
 	}
 	// 4. Prepare address structure
-	_address = _getSocketAddress(_config.host, _config.ports[0]); // TO-DO: in case port stays a vector, update this code
+	_address = _getSocketAddress(_config.host, _port);
 	// 5. Bind socket to the address/port
 	if (bind(_listenFd, (sockaddr *)&_address, sizeof(_address)) == -1)
 	{
 		close(_listenFd);
-		_listenFd = -1;		
-		throw std::runtime_error("Failed to bind to port " + toString(_config.ports[0]) + ": " + std::strerror(errno));
+		_listenFd = -1;
+		throw std::runtime_error("Failed to bind to port " + toString(_port) + ": " + std::strerror(errno));
 	}
 	// 6. Start listening for incoming connections
 	if (listen(_listenFd, BACKLOG) == -1)
@@ -76,7 +76,7 @@ void Listener::initSocket()
 		_listenFd = -1;
 		throw std::runtime_error("Failed to listen on socket");
 	}
-	std::cout << "[Listener] Listening on " << _config.host << ":" << _config.ports[0] << std::endl;
+	std::cout << "[Listener] Listening on " << _config.host << ":" << _port << std::endl;
 }
 
 // Helper function to resolve host/port to sockaddr_in

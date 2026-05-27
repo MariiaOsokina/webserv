@@ -32,7 +32,7 @@
 class Listener
 {
 public:
-	Listener(const ServerConfig &config);
+	Listener(const ServerConfig &config, int port);
 	~Listener();
 
 	void initSocket(); // bind(), socket setup
@@ -47,6 +47,7 @@ private:
 	sockaddr_in _getSocketAddress(const std::string &host, int port) const;
 
 	ServerConfig _config;
+	int _port;
 	int _listenFd;
 	sockaddr_in _address;
 
