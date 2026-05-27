@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   CGI.cpp                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/11 17:53:52 by aaladeok          #+#    #+#             */
-/*   Updated: 2026/05/25 20:21:36 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/26 19:51:00 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 #include "WebServMacros.hpp"
 #include <unistd.h>
 #include <sys/wait.h>
+#include <signal.h>
 #include <cstring>
 #include <cstdlib>
 #include <fcntl.h>
@@ -49,7 +50,7 @@ void CGI::setupEnvironment(const std::string& script_name) {
     {
         _env["PATH_INFO"] = _request.getURLWithoutParams();
     }
-    _env["QUERY_STRING"] = _request.getQueryString(); // AI: updated for clean code
+	_env["QUERY_STRING"] = _request.getQueryString(); // AI: updated for clean code
 	
 	// 3. Dynamic Absolute Pathing (Fixes the hardcoded "/home/..." string)
 	char cwd[1024];
@@ -175,25 +176,30 @@ void CGI::freeEnvArray(char** env) {
 	delete[] env;
 }
 
-std::pair<pid_t, int>CGI::executeNonBlocking() {
+CGIHandles CGI::executeNonBlocking() {
 	std::cout << "[DEBUG] CGI Execution Started for: " << _script_path << std::endl;
-	
+
 	int pipe_in[2]; //For sending request body into child process
 	int pipe_out[2]; //For receiving CGI output from child process
     int child_original_stdout = 1001; // AI: FOR DEBUG ONLY!!!
 
-	if (pipe(pipe_in) < 0 || pipe(pipe_out) < 0) {
-		return (std::make_pair(-1, -1));
+	if (pipe(pipe_in) < 0) {
+		return CGIHandles::failure();
+	}
+	if (pipe(pipe_out) < 0) {
+		close(pipe_in[0]);
+		close(pipe_in[1]);
+		return CGIHandles::failure();
 	}
 
 	pid_t pid = fork();
 
 	if (pid < 0) {
 		close(pipe_in[0]);
-		close(pipe_in[1]); //MO:fixed
-		close(pipe_out[0]); //MO: fixed
+		close(pipe_in[1]);
+		close(pipe_out[0]);
 		close(pipe_out[1]);
-		return (std::make_pair(-1, -1));
+		return CGIHandles::failure();
 	}
 	if (pid == 0) {
 		//Child process
@@ -274,113 +280,98 @@ std::pair<pid_t, int>CGI::executeNonBlocking() {
 // ==========================================
     // Parent process logic starts here
     // ==========================================
-    
+
     // 1. Close the ends of the pipes we don't use
     close(pipe_in[0]);   // Parent does not read from the CGI's input pipe
     close(pipe_out[1]);  // Parent does not write to the CGI's output pipe
 
-    // 2. Get the body from the request
-    const std::string& body = _request.getBody();
-    
-    // Keep this debug! It tells us if the "Bridge" from the socket is working.
-    std::cerr << "[DEBUG] CGI Parent: Body length in Request is " << body.length() << " bytes." << std::endl;
+    std::cerr << "[DEBUG] CGI Parent: Body length in Request is "
+              << _request.getBody().length() << " bytes." << std::endl;
 
-    // 3. Write the body to the CGI script's stdin
-    if (!body.empty()) {
-        ssize_t written = write(pipe_in[1], body.c_str(), body.length());
-        if (written < 0) {
-            std::cerr << "[ERROR] CGI Parent: Failed to write to pipe_in" << std::endl;
-        } else {
-            std::cerr << "[DEBUG] CGI Parent: Actually wrote " << written << " bytes to pipe." << std::endl;
-        }
-    }
-
-    // 4. CRITICAL: Close the write end of the input pipe
-    // This sends an EOF (End Of File) to the CGI script. 
-    // Without this, many CGI scripts (like PHP) will hang waiting for more data!
-    close(pipe_in[1]); 
-
-    // 5. Set the output pipe to non-blocking for your Poll/Select loop
-    if (!setNonBlocking(pipe_out[0])) {
+    // 2. Set BOTH parent ends non-blocking. The caller drains the body to
+    // pipe_in[1] via POLLOUT events and reads CGI output from pipe_out[0]
+    // via POLLIN events. If either setup fails, kill+reap the child to
+    // avoid leaving a zombie.
+    if (!setNonBlocking(pipe_in[1]) || !setNonBlocking(pipe_out[0])) {
+        close(pipe_in[1]);
         close(pipe_out[0]);
-        return std::make_pair(-1, -1);
+        kill(pid, SIGKILL);
+        waitpid(pid, NULL, 0);
+        return CGIHandles::failure();
     }
 
-    // 6. Return the PID and the read end of the output pipe
-    return std::make_pair(pid, pipe_out[0]);
+    // 3. Return all three handles. NOTE: pipe_in[1] is intentionally
+    // left open here. The caller MUST close it once the body has been
+    // fully written — that close is what sends EOF to the CGI script.
+    CGIHandles h;
+    h.pid      = pid;
+    h.stdinFd  = pipe_in[1];
+    h.stdoutFd = pipe_out[0];
+    return h;
 }
 
-HTTP_Response CGI::parseCGIOutput(const std::string& output) {
-    HTTP_Response response;
-    
-    // ---  Default to 200 OK ---
-    // This ensures we never send "HTTP/1.1 0" if the CGI script 
-    // omits the Status header.
+void CGI::parseCGIOutput(std::string& output, HTTP_Response& response) {
+    response.reset();
     response.setStatus(HTTP_Status::OK);
-    
-    // Mark this response as CGI-generated
     response.setCGIGenerated(true);
 
-    std::string headers_part;
-    std::string body_part;
-    
-    // 1. Separate Headers from the Body
+    // 1. Locate the headers/body boundary.
     size_t header_end = output.find("\r\n\r\n");
     size_t delimiter_len = 4;
-    
     if (header_end == std::string::npos) {
         header_end = output.find("\n\n");
         delimiter_len = 2;
     }
-    
-    if (header_end != std::string::npos) {
-        headers_part = output.substr(0, header_end);
-        body_part = output.substr(header_end + delimiter_len);
-        
-        // 2. Parse Headers Line by Line
-        std::vector<std::string> header_lines = Utils::split(headers_part, '\n');
-        for (size_t i = 0; i < header_lines.size(); ++i) {
-            std::string line = Utils::trim(header_lines[i]);
-            if (line.empty()) continue;
-            
-            // --- NPH MODE DETECTED ---
-            // AI NOTES: NPH = Non-Parsed Header or No-Parsed Header
-            // these headers are sent from the CGI script or executable, along
-            // with the CGI body
-            if (i == 0 && line.length() > 5 && line.substr(0, 5) == "HTTP/") {
-                std::vector<std::string> parts = Utils::split(line, ' ');
-                if (parts.size() >= 2) {
-                    int status_code = Utils::toInt(parts[1]);
-                    // Overwrites the default 200 with the NPH status
-                    response.setStatus(HTTP_Status::fromCode(status_code));
-                }
-                continue; 
+
+    if (header_end == std::string::npos) {
+        // No headers found — whole payload is the body. Move it into
+        // the response without copying.
+        response.swapBody(output);
+        response.getHeaders()["Content-Type"] = "text/html";
+        return;
+    }
+
+    // 2. Headers: a one-time copy of the (small) header section.
+    std::string headers_part = output.substr(0, header_end);
+
+    // 3. Body: strip the header bytes out of `output` in-place, then
+    // hand the remaining buffer to the response by swap. No 200 MB
+    // duplicate is created.
+    output.erase(0, header_end + delimiter_len);
+    response.swapBody(output);
+
+    // 4. Parse headers line by line.
+    std::vector<std::string> header_lines = Utils::split(headers_part, '\n');
+    for (size_t i = 0; i < header_lines.size(); ++i) {
+        std::string line = Utils::trim(header_lines[i]);
+        if (line.empty()) continue;
+
+        // NPH (Non-Parsed Header): first line may be a status line.
+        if (i == 0 && line.length() > 5 && line.substr(0, 5) == "HTTP/") {
+            std::vector<std::string> parts = Utils::split(line, ' ');
+            if (parts.size() >= 2) {
+                int status_code = Utils::toInt(parts[1]);
+                response.setStatus(HTTP_Status::fromCode(status_code));
             }
-            
-            // --- STANDARD CGI HEADERS ---
-            size_t colon = line.find(':');
-            if (colon != std::string::npos) {
-                std::string name = Utils::trim(line.substr(0, colon));
-                std::string value = Utils::trim(line.substr(colon + 1));
-                
-                if (Utils::toLowerCase(name) == "status") {
-                    int status_code = Utils::toInt(value);
-                    // Overwrites the default 200 with the Status header value
-                    response.setStatus(HTTP_Status::fromCode(status_code));
-                } else {
-                    response.getHeaders()[name] = value;
-                }
+            continue;
+        }
+
+        size_t colon = line.find(':');
+        if (colon != std::string::npos) {
+            std::string name = Utils::trim(line.substr(0, colon));
+            std::string value = Utils::trim(line.substr(colon + 1));
+
+            if (Utils::toLowerCase(name) == "status") {
+                int status_code = Utils::toInt(value);
+                response.setStatus(HTTP_Status::fromCode(status_code));
+            } else if (Utils::toLowerCase(name) != "content-length") {
+                // Content-Length is owned by swapBody (set from the
+                // actual body length). Ignoring the CGI's header
+                // prevents a mismatch if the script lied.
+                response.getHeaders()[name] = value;
             }
         }
-        response.setContent(body_part);
-    } else {
-        // No headers found, treat everything as body
-        response.setContent(output);
-        response.getHeaders()["Content-Type"] = "text/html";
-        // Status remains at the default 200 set above
     }
-    
-    return response;
 }
 
 bool CGI::forCGIResponse(const std::string& filepath, const std::map<std::string, std::string>& cgi_map){

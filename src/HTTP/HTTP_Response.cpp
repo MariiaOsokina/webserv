@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP_Response.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/22 13:21:54 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/26 19:27:04 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -104,6 +104,41 @@ std::string HTTP_Response::serialize() const
 	return (oss.str());
 }
 
+void HTTP_Response::serializeInto(std::string &out)
+{
+	// Estimate so we avoid most reallocations. The 256 covers status
+	// line + a generous header average; the body dominates anyway.
+	size_t header_estimate = 256 + _headers.size() * 80;
+	out.clear();
+	out.reserve(header_estimate + _body.size());
+
+	out.append(_version);
+	out.append(" ");
+	out.append(::toString(_status.code));
+	out.append(" ");
+	out.append(_status.text);
+	out.append(CRLF);
+
+	std::map<std::string, std::string>::const_iterator it;
+	for (it = _headers.begin(); it != _headers.end(); ++it)
+	{
+		out.append(it->first);
+		out.append(": ");
+		out.append(it->second);
+		out.append(CRLF);
+	}
+	out.append(CRLF);
+
+	// Move the body in (no copy of the 100+ MB blob): swap into a
+	// scratch string and append from it, then let it die.
+	if (!_body.empty())
+	{
+		std::string body_tmp;
+		body_tmp.swap(_body);
+		out.append(body_tmp.data(), body_tmp.size());
+	}
+}
+
 void HTTP_Response::setContent(const std::string &text)
 {
 	if (!_isHEADresponse)
@@ -140,6 +175,17 @@ void HTTP_Response::setCGIGenerated(const bool value)
 bool HTTP_Response::isCGIGenerated()
 {
 	return (_isCGIGenerated);
+}
+
+void HTTP_Response::swapBody(std::string &dst)
+{
+	_body.swap(dst);
+	_headers[HTTP_FieldName::CONTENT_LENGTH] = ::toString(_body.length());
+}
+
+void HTTP_Response::clearBody()
+{
+	std::string().swap(_body);
 }
 
 void HTTP_Response::reset()

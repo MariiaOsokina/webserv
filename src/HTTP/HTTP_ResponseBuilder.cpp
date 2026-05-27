@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP_ResponseBuilder.cpp                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/20 10:48:39 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/25 18:42:10 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/26 19:28:35 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,9 +64,9 @@ HTTP_ResponseBuilder &HTTP_ResponseBuilder::operator=(const HTTP_ResponseBuilder
 void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 {
 	// DEBUG - TO-DO: remove these!
-	//std::cout << "++ GOT REQUEST ++" << std::endl;
-	//std::cout << request.getDisplayFriendlyRequest();
-	//std::cout << "++ REQUEST FIN ++" << std::endl;
+	std::cout << "++ GOT REQUEST ++" << std::endl;
+	std::cout << request.getDisplayFriendlyRequest();
+	std::cout << "++ REQUEST FIN ++" << std::endl;
 
 	int parseStatus = request.getParseStatus();
 
@@ -106,28 +106,9 @@ void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 		return;
 	}
 
-	if (_location.redirect_code > 0 || !_location.redirect_url.empty())
+	if (_location.redirect_code > 0) // TO-DO: needs improving, redirect_code is always ZERO from config parser
 	{
-		int statusCode = _location.redirect_code;
-		std::string url = _location.redirect_url;
-
-		if (statusCode > 0 && !url.empty())
-		{
-			response.setStatus(HTTP_Status::fromCode(statusCode));
-			response.getHeaders()[HTTP_FieldName::LOCATION] = url;
-			response.setContent("");
-			return;
-		}
-		else if (statusCode == 0 && !url.empty())
-		{
-			response.setStatus(HTTP_Status::MOVED_PERMANENTLY);
-			response.getHeaders()[HTTP_FieldName::LOCATION] = url;
-			response.setContent("");
-			return;
-		}
-
-		response.setStatus(HTTP_Status::fromCode(statusCode));
-		response.setContent(ErrorPages::getContent(_serverConfig, HTTP_Status::fromCode(statusCode)));
+		HTTP_ResponseBuilder::setResponseRedirect(response, _location.redirect_code, _location.redirect_url);
 		return;
 	}
 
@@ -135,6 +116,21 @@ void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 	{
 		setResponse(response, HTTP_Status::METHOD_NOT_ALLOWED);
 		return;
+	}
+
+	// Location-level client_max_body_size enforcement. The Connection
+	// only knows the server-level limit when it parses Content-Length,
+	// so a tighter location limit (e.g. /post_body { client_max_body_size 100; })
+	// would otherwise be ignored. Apply it here once the location is known.
+	{
+		size_t loc_limit = _location.client_max_body_size > 0
+			? _location.client_max_body_size
+			: _serverConfig.client_max_body_size;
+		if (loc_limit > 0 && request.getBody().length() > loc_limit)
+		{
+			setResponse(response, HTTP_Status::CONTENT_TOO_LARGE);
+			return;
+		}
 	}
 
 	try
@@ -152,9 +148,16 @@ void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 	_pathType = getPathType(_pathOnServer);
 
 	// 3. MO: NEW CGI Logic Integration
-	if (_pathType == PATH_FILE && (method == "GET" || method == "POST")) // AI: Any method should be allowed here, not just GET and POST
+	// Route by extension whenever cgi_pass matches — even when the script
+	// does not exist on disk. The cgi_pass directive selects the handler
+	// by extension; whether the request makes sense without a file is up
+	// to the CGI script itself (the 42 cgi_tester echoes stdin and does
+	// not care). Without this, requests to non-existent .bla files fall
+	// through to the upload handler, which made the 42 tester fail with
+	// "bad cgi returned body content".
+	if ((_pathType == PATH_FILE || _pathType == PATH_NONE)
+		&& (method == "GET" || method == "POST"))
 	{
-		// --- MOVE DEBUG HERE (Outside the if block) ---
 		std::string ext = Utils::getExtension(_pathOnServer);
 		std::cout << "[DEBUG] Checking CGI for Path: " << _pathOnServer << std::endl;
 		std::cout << "[DEBUG] Ext extracted: [" << ext << "]" << std::endl;
@@ -162,14 +165,9 @@ void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 
 		if (CGI::forCGIResponse(_pathOnServer, _location.cgi_extensions))
 		{
-
-			// We get the executable path (e.g., /usr/bin/python3)
 			std::string cgi_path = CGI::getCGIPath(_pathOnServer, _location.cgi_extensions);
 
-			// Flag the response as CGI
 			response.setCGIGenerated(true);
-
-			// NOTE: add these two setters to  HTTP_Response class!
 			response.setCgiPath(cgi_path);
 			response.setScriptPath(_pathOnServer);
 		}

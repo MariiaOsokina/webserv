@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP_Request.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:46:32 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/23 21:23:25 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/26 19:25:37 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -198,6 +198,11 @@ const std::map<std::string, std::string, CaseInsensitiveCompare> HTTP_Request::g
 const std::string &HTTP_Request::getBody() const
 {
 	return (_body);
+}
+
+void HTTP_Request::swapBody(std::string &dst)
+{
+	_body.swap(dst);
 }
 
 std::string HTTP_Request::serialize() const

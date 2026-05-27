@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   WebServ.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/14 19:03:57 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/11 17:07:17 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/26 19:33:37 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,13 +51,18 @@ extern volatile sig_atomic_t g_server_running;
 
 //Structs to track CGIs
 struct CGIProcess {
-    pid_t   pid;
-    int     stdoutFd;
-    int     connFd;
+    pid_t       pid;
+    int         stdoutFd;
+    int         stdinFd;        // write end of body pipe, -1 once body fully sent / closed
+    int         connFd;
     std::string output;
-    time_t  startTime;
+    std::string inputBody;      // request body to drain into stdinFd
+    size_t      inputOffset;    // bytes already written to stdinFd
+    time_t      startTime;
 
-    CGIProcess() : pid(-1), stdoutFd(-1), connFd(-1), startTime(0) {}
+    CGIProcess()
+        : pid(-1), stdoutFd(-1), stdinFd(-1), connFd(-1),
+          inputOffset(0), startTime(0) {}
 };
 
 class WebServ
@@ -90,9 +95,15 @@ private:
 	void _checkConnTimeouts();
 
 	// --- CGI Handler Methods ---
-    bool _isCGISocket(int fd) const;
+    bool _isCGISocket(int fd) const;        // true if fd is a CGI stdout (read) FD
+    bool _isCGIStdinFd(int fd) const;       // true if fd is a CGI stdin (write) FD
     bool _executeCGI(int connFd, const std::string& cgiPath, const std::string& scriptPath);
     void _handleCGIOutput(size_t *index);
+    void _handleCGIInput(size_t *index);    // drains body to CGI stdin via POLLOUT
+    // Closes stdin FD and unregisters it from poll/map state. If `cursor`
+    // is provided and the removed poll entry was at or before *cursor,
+    // *cursor is decremented so the surrounding loop stays consistent.
+    void _closeCGIStdin(CGIProcess& cgi, size_t *cursor);
     void _checkCGITimeouts();
     void _cleanupCGI(int cgiFd);
     void _closeCGIPipe(size_t index);
@@ -110,7 +121,8 @@ private:
 	std::map<int, Listener *> _fdToListenerMap; // helps quickly find which server owns which FD
 	std::map<int, Connection *> _fdToConnMap;
 
-    std::map<int, CGIProcess> _cgiProcesses; //MO: change to fdToCGIProcesses???
+    std::map<int, CGIProcess> _cgiProcesses;        // keyed by stdoutFd
+    std::map<int, int>        _cgiStdinToStdout;    // stdinFd -> stdoutFd (for dispatch & cleanup)
 };
 
 #endif // WEBSERV_HPP
