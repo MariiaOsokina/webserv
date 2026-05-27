@@ -144,6 +144,9 @@ fclean: clean
 	$(call fancylog,Removing,removed,./www/delete_test,./tests/prep_www_for_delete_testing.sh fclean)
 	@$(RM) $(MAKE_DB)
 
+config_tester:
+	python3 tests/config_tester.py
+
 re: fclean all
 
 .PHONY: all clean fclean re \

@@ -41,17 +41,25 @@ int main(int argc, char **argv)
 	// std::string config_file = "config/test_missing_brace.conf";
 	// std::string config_file = "config/test_missing_semicolon.conf";
 
+	bool test_mode = false;
+
 	signal(SIGPIPE, SIG_IGN);	  // Prevents crash on broken pipe
 	signal(SIGINT, handleSigint); // Handles Ctrl+C
 
-	if (argc > 2)
-	{
-		std::cerr << "Usage: " << argv[0] << " [config_file]" << std::endl;
-		return 1;
-	}
+	// if (argc > 2)
+	// {
+	// 	std::cerr << "Usage: " << argv[0] << " [config_file]" << std::endl;
+	// 	return 1;
+	// }
 	// std::string configPath = (argc == 2) ? argv[1] : "../default.conf";
-	if (argc == 2)
+	if (argc == 3 && std::string(argv[1]) == "--check") 
+	{
+		test_mode = true;
+		config_file = argv[2];
+	}
+	else if (argc == 2)
 		config_file = argv[1];
+
 	try
 	{
 		Config config;
@@ -59,6 +67,11 @@ int main(int argc, char **argv)
 		// FOR TESTING (getMockConfig() should be replaced by ConfigParser)
 		// std::vector<ServerConfig> configs = getMockConfig();
 
+		if (test_mode) {
+			std::cout << "Config OK\n";
+			return (0);
+		}
+		
 		WebServ ws;
 		// ws.setup(configs);
 		ws.setup(config.getServers());
