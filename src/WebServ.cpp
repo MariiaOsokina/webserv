@@ -52,23 +52,33 @@ void WebServ::setup(const std::vector<ServerConfig> &configs)
 {
 	for (size_t i = 0; i < configs.size(); ++i)
 	{
-		Listener *newListener = NULL;
-		try
+		// One Listener per (server block, port). Each port in
+		// ServerConfig::ports gets its own socket/bind/listen — the
+		// poll loop already keys on listen FDs, so duplicating the
+		// config across ports is the cheapest way to support
+		// multiple `listen` directives without changing the rest of
+		// the event-loop plumbing.
+		for (size_t p = 0; p < configs[i].ports.size(); ++p)
 		{
-			newListener = new Listener(configs[i]);
-			newListener->initSocket(); // Creates the socket, bind, listen
-			int listenFd = newListener->getListenFd();
+			int port = configs[i].ports[p];
+			Listener *newListener = NULL;
+			try
+			{
+				newListener = new Listener(configs[i], port);
+				newListener->initSocket(); // Creates the socket, bind, listen
+				int listenFd = newListener->getListenFd();
 
-			_listeners.push_back(newListener);
-			_addNewFdtoPool(listenFd, POLLIN);
-			_fdToListenerMap[listenFd] = newListener;
-			std::cout << "[WebServ] New Listener setted up on FD: " << listenFd << std::endl; // log
-		}
-		catch (const std::exception &e)
-		{
-			std::cerr << "Failed to setup listener " << configs[i].host << ":" << configs[i].ports[0] << ": " << e.what() << std::endl;
-			if (newListener)
-				delete newListener;
+				_listeners.push_back(newListener);
+				_addNewFdtoPool(listenFd, POLLIN);
+				_fdToListenerMap[listenFd] = newListener;
+				std::cout << "[WebServ] New Listener setted up on FD: " << listenFd << std::endl; // log
+			}
+			catch (const std::exception &e)
+			{
+				std::cerr << "Failed to setup listener " << configs[i].host << ":" << port << ": " << e.what() << std::endl;
+				if (newListener)
+					delete newListener;
+			}
 		}
 	}
 }

@@ -244,22 +244,14 @@ void Connection::_setupBodyReading()
         return;
     }
     // 3. Handle Content-Length
-    if (itCL != h.end()) 
+    if (itCL != h.end())
     {
-        _expectedBodySize = std::strtoul(itCL->second.c_str(), NULL, 10);        
-        size_t maxBodySize = _listener->getConfig().client_max_body_size;
-		//
-		// AI: the below commented section is a demo of how to
-		// read client_max_body_size from a location at any time,
-		// after the request line has been parsed
-		//
-		//ssize_t max_body_size = HTTP::ResponseBuilder::getClientMaxBodySize(_listener->getConfig(), _request, _response);
-		//if (max_body_size == -1)
-		//{
-		//	// HTTP::ResponseBuilder::getClientMaxBodySize will set _response accordingly
-		//	// send _response.serialise()
-		//}
-		//size_t maxBodySize = static_cast<size_t>(max_body_size);
+        _expectedBodySize = std::strtoul(itCL->second.c_str(), NULL, 10);
+        // Headers are parsed, so we can resolve the matching location
+        // here and apply its client_max_body_size (falling back to the
+        // server-level value). Otherwise a location that overrides the
+        // server with a larger limit would be silently capped.
+        size_t maxBodySize = HTTP::ResponseBuilder::resolveBodyLimit(_listener->getConfig(), _request);
         if (maxBodySize > 0 && _expectedBodySize > maxBodySize) {
             std::cout << "[WebServ] Payload too large (Content-Length): " << _expectedBodySize << std::endl;
             _request.setParseStatus(HTTP_Request::CONTENT_TOO_LARGE);
@@ -344,7 +336,7 @@ void Connection::_handleChunkedBody() {
 		}
 
 		// 3. Overflow and Limit Check for Payload Size
-		size_t maxBodySize = _listener->getConfig().client_max_body_size;
+		size_t maxBodySize = HTTP::ResponseBuilder::resolveBodyLimit(_listener->getConfig(), _request);
 		if (maxBodySize > 0 && (chunkSize > maxBodySize || _chunkedAccumulator.size() + chunkSize > maxBodySize))
 		{
 			std::cout << "[WebServ] Payload too large (Chunked stream exceeded limit)" << std::endl;

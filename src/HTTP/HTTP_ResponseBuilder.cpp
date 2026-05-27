@@ -609,3 +609,22 @@ ssize_t HTTP_ResponseBuilder::getClientMaxBodySize(
 
 	return (static_cast<ssize_t>(client_max_body_size));
 }
+
+size_t HTTP_ResponseBuilder::resolveBodyLimit(
+	const ServerConfig &sc, const HTTP_Request &req)
+{
+	try
+	{
+		const LocationConfig &location = HTTP_ResponseBuilder::locationGetBestMatch(sc, req);
+		if (location.client_max_body_size > 0)
+			return (location.client_max_body_size);
+		return (sc.client_max_body_size);
+	}
+	catch (HTTP_ResponseBuilder::Exception &)
+	{
+		// No matching location (or canonicalization redirect): fall back
+		// to the server-level limit. The 404/302 will be produced later
+		// by build() in the normal response flow.
+		return (sc.client_max_body_size);
+	}
+}

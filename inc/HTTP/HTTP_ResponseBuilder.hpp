@@ -53,6 +53,13 @@ public:
 
 	static ssize_t getClientMaxBodySize(const ServerConfig &sc, const HTTP_Request &req, HTTP_Response &res);
 
+	// Returns the effective client_max_body_size for the request:
+	// the matching location's value if set, otherwise the server-level
+	// value. Returns 0 if neither is set, or if no location matches
+	// (caller should fall back to server-level semantics; the 404 is
+	// produced later by build()). No side effects on req/sc.
+	static size_t resolveBodyLimit(const ServerConfig &sc, const HTTP_Request &req);
+
 private:
 	ServerConfig _serverConfig;
 	LocationConfig _location;
