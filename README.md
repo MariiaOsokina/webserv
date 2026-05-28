@@ -99,6 +99,57 @@ Automated test, running the 42 tester:
    and directories, and conf/42tester.conf has the needed
    configuration)
 
+Automated tests, created by Ade, showcasing the config parser
+is functioning as required:
+
+1. in one terminal run:
+
+   make run
+
+2. in another terminal run:
+
+   make config_tester
+
+Stress test with siege, a multi-threaded HTTP/FTP load tester
+and benchmarking utility:
+
+1. install siege:
+
+   sudo apt install siege
+
+2. Start our web server by running:
+
+   make run
+
+3. For a basic 1 minute stress test, simulating 10 concurrent
+   client connecting run:
+
+   siege -c10 -t1m http://localhost:8080
+
+4. For a medium 3 minute stress test, with no delay between
+   iterations and with 50 concurrent client connections, run:
+
+   siege -c50 -t3m -b -f ./tests/siege/www-urls.txt
+
+   The siege-www-urls.txt contains valid links to three
+   different files for siege to randomly ask for via the
+   simulated clients.
+
+5. For a hard stress test, with 255, a high number of
+   concurrent client connections, each repeating 10 times and
+   with no delay between the requests, run:
+
+   siege -c255 -r10 -b -f ./tests/siege/www-urls.txt
+
+6. For a very stressful test, where each concurrent client
+   will repeat 1000 times, we can run:
+
+   siege -c255 -r1000 -b -f ./tests/siege/www-urls.txt
+
+   Some errors are shown by siege, but please note, our
+   web server stands the ground and keeps running with
+   an availability of 99.96%, with multiple file requests!
+
 ## Resources
 
 - HTTP 1.0 RFC:
@@ -109,3 +160,13 @@ Automated test, running the 42 tester:
 
 - How the web works: HTTP and CGI explained
   https://www.garshol.priv.no/download/text/http-tut.html
+
+- AI usage notes:
+
+  AI has been used to research, explain terms and concepts
+  and to provide small code samples.
+  
+  AI has also been tested, to speed up development, by
+  generating the shell script ./tests/ai_gen_requests.sh prompted
+  by Atti in about 10 sentences, which worked at the first try
+  (then has been extended manually).
