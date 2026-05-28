@@ -1,0 +1,3 @@
+http://localhost:8080/siege/empty.html
+http://localhost:8080/siege/simple-1k.html
+http://localhost:8080/siege/stress-1mb.html
