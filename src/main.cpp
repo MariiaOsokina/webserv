@@ -6,12 +6,13 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/14 19:02:21 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/26 12:54:00 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/29 14:31:01 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <iostream>
 #include <csignal>
+#include <clocale>
 
 #include "WebServ.hpp"
 #include "Listener.hpp"
@@ -29,6 +30,32 @@ void handleSigint(int sig)
 {
 	(void)sig;
 	g_server_running = 0;
+}
+
+bool guarantee_english_locale_time(bool setup)
+{
+	static std::string saved_locale;
+	static bool initialized = false;
+
+	if (setup)
+	{
+		char* old_locale = std::setlocale(LC_TIME, NULL);
+		saved_locale = old_locale ? old_locale : "C";
+
+		// Enforce standard formatting rules
+		std::setlocale(LC_TIME, "C");
+		initialized = true;
+		return (true);
+	}
+
+	// !setup = restore/revert
+	// only if this function saved previous state already
+	if (!initialized)
+		return (false);
+	
+	std::setlocale(LC_TIME, saved_locale.c_str());
+	initialized = false;
+	return (true);
 }
 
 int main(int argc, char **argv)
@@ -60,6 +87,8 @@ int main(int argc, char **argv)
 	else if (argc == 2)
 		config_file = argv[1];
 
+	guarantee_english_locale_time(true); // AI: added for later calls to Utils::getHttpDate()
+
 	try
 	{
 		Config config;
@@ -83,8 +112,11 @@ int main(int argc, char **argv)
 	}
 	catch (const std::exception &e)
 	{
+		guarantee_english_locale_time(false);
 		std::cerr << "Error: " << e.what() << '\n';
 		return 1;
 	}
+	
+	guarantee_english_locale_time(false);
 	return (0);
 }

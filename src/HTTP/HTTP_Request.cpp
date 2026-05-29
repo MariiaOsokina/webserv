@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP_Request.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:46:32 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/26 19:25:37 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/05/29 17:02:22 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -142,7 +142,6 @@ int HTTP_Request::parseHeaders(const char *raw, size_t len) // MO:SPLIT TO parse
 		{
 			if (!HTTP_Request::_parseHeaderLine(line))
 				/* malformed header line
-				 * TO-DO: or awaiting for more data?
 				 * parseStatus is now set accordingly!
 				 */
 				return (FAILURE);
@@ -265,7 +264,7 @@ int HTTP_Request::_parseRequestLine(std::string line)
 	 *	getline removes '\n' (LF), so,
 	 *	only check and remove '\r' (CR).
 	 */
-	if (!removePortion(line, CR))
+	if (!removeLastPortion(line, CR))
 	{
 		_parseStatus = HTTP_Request::BAD_REQUEST;
 		return (FAILURE);
@@ -355,12 +354,34 @@ int HTTP_Request::_parseVersion(std::string version)
 	return (FAILURE);
 }
 
-int HTTP_Request::_URLIsValid(std::string url)
+int HTTP_Request::_URLIsValid(const std::string &url)
 {
-	/* TO-DO: verify if url is valid */
-	/* 	ex. contains white spaces, control characters,
-	 *	etc. (RFC 9110, 9112, 3986) */
-	(void)url;
+	return (SUCCESS);
+
+	if (url.empty())
+		return (FAILURE);
+
+	size_t pos = 0;
+
+	// PATH, QUERY, AND FRAGMENT COMPONENTS
+	// RFC 3986 Section 3.3 (Path), Section 3.4 (Query), Section 3.5 (Fragment)
+	// Characters must match strict unreserved/reserved specifications or %HH
+	while (pos < url.length())
+	{
+		if (url[pos] == '%')
+		{
+			if (!Utils::isValidPercentEncoded(url, pos))
+				return (FAILURE); // malformed percent escape triplet
+			pos += 3;
+		}
+		else
+		{
+			if (!Utils::isValidUriChar(url[pos]))
+				return (FAILURE); // illegal character present in url string
+			pos++;
+		}
+	}
+
 	return (SUCCESS);
 }
 
@@ -370,7 +391,7 @@ int HTTP_Request::_parseHeaderLine(std::string line)
 	 *	getline removes '\n' (LF), so,
 	 *	only check and remove '\r' (CR).
 	 */
-	if (!removePortion(line, CR))
+	if (!removeLastPortion(line, CR))
 	{
 		_parseStatus = HTTP_Request::BAD_REQUEST;
 		return (FAILURE);
@@ -410,8 +431,7 @@ int HTTP_Request::_parseHeaderLine(std::string line)
 	if (lowerKey == "content-length")
 	{
 		size_t value_size_t;
-		// Now 'value' is strictly "15", so numeric parsing will succeed
-		if (numberIsPositive(value) && toNumber(value, value_size_t))
+		if (toNumber(value, value_size_t, FORBID_NEGATIVES))
 		{
 			_headers[HTTP_FieldName::CONTENT_LENGTH] = toString(value_size_t);
 		}

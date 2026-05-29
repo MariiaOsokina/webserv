@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP_Request.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/26 19:26:13 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/05/29 16:39:37 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -135,7 +135,7 @@ private:
 	int _parseMethod(std::string method);
 	int _parseURL(std::string url);
 	int _parseVersion(std::string version);
-	int _URLIsValid(std::string url);
+	int _URLIsValid(const std::string &url);
 
 	int _parseHeaderLine(std::string line);
 	int _countHeaderIfRequired(std::string fieldName);
