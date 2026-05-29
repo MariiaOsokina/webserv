@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP_ResponseBuilder.cpp                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/20 10:48:39 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/26 19:28:35 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/05/29 18:14:15 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -106,9 +106,28 @@ void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 		return;
 	}
 
-	if (_location.redirect_code > 0) // TO-DO: needs improving, redirect_code is always ZERO from config parser
+	if (_location.redirect_code > 0 || !_location.redirect_url.empty())
 	{
-		HTTP_ResponseBuilder::setResponseRedirect(response, _location.redirect_code, _location.redirect_url);
+		int statusCode = _location.redirect_code;
+		std::string url = _location.redirect_url;
+
+		if (statusCode > 0 && !url.empty())
+		{
+			response.setStatus(HTTP_Status::fromCode(statusCode));
+			response.getHeaders()[HTTP_FieldName::LOCATION] = url;
+			response.setContent("");
+			return;
+		}
+		else if (statusCode == 0 && !url.empty())
+		{
+			response.setStatus(HTTP_Status::MOVED_PERMANENTLY);
+			response.getHeaders()[HTTP_FieldName::LOCATION] = url;
+			response.setContent("");
+			return;
+		}
+
+		response.setStatus(HTTP_Status::fromCode(statusCode));
+		response.setContent(ErrorPages::getContent(_serverConfig, HTTP_Status::fromCode(statusCode)));
 		return;
 	}
 
@@ -231,7 +250,7 @@ void HTTP_ResponseBuilder::setResponseRedirect(HTTP_Response &response, const in
 	response.setContent("");
 }
 
-bool HTTP_ResponseBuilder::locationHasMethod(const LocationConfig &location, std::string method)
+bool HTTP_ResponseBuilder::locationHasMethod(const LocationConfig &location, const std::string &method)
 {
 	std::vector<std::string>::const_iterator method_it = location.allowed_methods.begin();
 	for (; method_it != location.allowed_methods.end(); ++method_it)
@@ -242,7 +261,7 @@ bool HTTP_ResponseBuilder::locationHasMethod(const LocationConfig &location, std
 	return (false);
 }
 
-void HTTP_ResponseBuilder::build_response_for_GET_or_HEAD(HTTP_Response &response, HTTP_Request &request)
+void HTTP_ResponseBuilder::build_response_for_GET_or_HEAD(HTTP_Response &response, const HTTP_Request &request)
 {
 	// _pathType == PATH_NONE is handled before the function call
 
@@ -426,7 +445,7 @@ void HTTP_ResponseBuilder::build_response_for_POST(
 
 void HTTP_ResponseBuilder::build_response_for_DELETE(
 	HTTP_Response &response,
-	HTTP_Request &request)
+	const HTTP_Request &request)
 {
 	(void)request;
 	if (std::remove(_pathOnServer.c_str()) == 0)
