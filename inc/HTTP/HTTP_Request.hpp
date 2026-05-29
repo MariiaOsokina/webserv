@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/29 17:54:26 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/29 18:02:16 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -92,7 +92,7 @@ public:
 	bool ready();
 	void reset();
 	void setParseStatus(const ParseStatus status);
-	HTTP_Request getDisplayFriendlyRequest();
+	HTTP_Request getDisplayFriendlyRequest() const;
 	bool hasHeader(const std::string &fieldName) const;
 	void dumpToFile(const std::string &filename) const;
 

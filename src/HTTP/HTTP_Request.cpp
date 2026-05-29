@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:46:32 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/29 17:54:12 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/29 18:01:42 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -226,7 +226,7 @@ void HTTP_Request::setParseStatus(const ParseStatus status)
 	_parseStatus = status;
 }
 
-HTTP_Request HTTP_Request::getDisplayFriendlyRequest()
+HTTP_Request HTTP_Request::getDisplayFriendlyRequest() const
 {
 	HTTP_Request displayFriendlyRequest(*this);
 	displayFriendlyRequest._isDisplayFriendlyRequest = true;
