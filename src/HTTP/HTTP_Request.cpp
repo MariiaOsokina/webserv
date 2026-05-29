@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:46:32 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/29 17:02:22 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/29 17:54:12 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -221,7 +221,7 @@ const std::string HTTP_Request::getMultipartBoundary() const
 	return (_multipartBoundary);
 }
 
-void HTTP_Request::setParseStatus(ParseStatus status)
+void HTTP_Request::setParseStatus(const ParseStatus status)
 {
 	_parseStatus = status;
 }
@@ -258,7 +258,7 @@ void HTTP_Request::dumpToFile(const std::string &filename) const
 	std::cout << "[DEBUG] Request saved/dumped to " << filename_dumped_to << std::endl;
 }
 
-int HTTP_Request::_parseRequestLine(std::string line)
+int HTTP_Request::_parseRequestLine(std::string &line)
 {
 	/*
 	 *	getline removes '\n' (LF), so,
@@ -322,7 +322,7 @@ int HTTP_Request::_parseRequestLine(std::string line)
 	return (SUCCESS);
 }
 
-int HTTP_Request::_parseMethod(std::string method)
+int HTTP_Request::_parseMethod(const std::string &method)
 {
 	if (method == HTTP_Method::GET ||
 		method == HTTP_Method::HEAD ||
@@ -335,7 +335,7 @@ int HTTP_Request::_parseMethod(std::string method)
 	return (FAILURE);
 }
 
-int HTTP_Request::_parseURL(std::string url)
+int HTTP_Request::_parseURL(const std::string &url)
 {
 	if (!_URLIsValid(url))
 		return (FAILURE);
@@ -343,7 +343,7 @@ int HTTP_Request::_parseURL(std::string url)
 	return (SUCCESS);
 }
 
-int HTTP_Request::_parseVersion(std::string version)
+int HTTP_Request::_parseVersion(const std::string &version)
 {
 	if (version == HTTP_Version::v1_0 ||
 		version == HTTP_Version::v1_1)
@@ -385,7 +385,7 @@ int HTTP_Request::_URLIsValid(const std::string &url)
 	return (SUCCESS);
 }
 
-int HTTP_Request::_parseHeaderLine(std::string line)
+int HTTP_Request::_parseHeaderLine(std::string &line)
 {
 	/*
 	 *	getline removes '\n' (LF), so,
@@ -570,7 +570,7 @@ int HTTP_Request::populateMultipartVars()
 /* this function can include other headers
  * in the future if needed
  */
-int HTTP_Request::_countHeaderIfRequired(std::string fieldName)
+int HTTP_Request::_countHeaderIfRequired(const std::string &fieldName)
 {
 	if (fieldName == HTTP_FieldName::HOST)
 		_headersRequiredCount++;
@@ -578,7 +578,7 @@ int HTTP_Request::_countHeaderIfRequired(std::string fieldName)
 }
 
 /* Defined in RFC 9112, summarized in RFC 9110 */
-int HTTP_Request::_fieldNameIsValid(std::string fieldName)
+int HTTP_Request::_fieldNameIsValid(const std::string &fieldName)
 {
 	const static std::string allowedChars(ALLOWED_CHARS_IN_FIELD_NAME);
 
@@ -599,7 +599,7 @@ int HTTP_Request::_fieldNameIsValid(std::string fieldName)
 }
 
 /* defined in RFC 9112, with semantics summarized in RFC 9110 */
-int HTTP_Request::_headerValueIsValid(std::string value)
+int HTTP_Request::_headerValueIsValid(const std::string &value)
 {
 	for (std::string::size_type i = 0; i < value.size(); ++i)
 	{
@@ -614,7 +614,7 @@ int HTTP_Request::_headerValueIsValid(std::string value)
 	return (SUCCESS);
 }
 
-int HTTP_Request::_fieldNameAlreadyProcessed(std::string fieldName)
+int HTTP_Request::_fieldNameAlreadyProcessed(const std::string &fieldName)
 {
 	if (_headers.find(fieldName) != _headers.end())
 		return (SUCCESS);
@@ -624,7 +624,7 @@ int HTTP_Request::_fieldNameAlreadyProcessed(std::string fieldName)
 /* Disallow CONTENT_LENGTH && TRANSFER_ENCODING headers,
  * both at the same time in the http request to avoid "request smuggling"
  */
-int HTTP_Request::_fieldNameIsSecurityRisk(std::string fieldName)
+int HTTP_Request::_fieldNameIsSecurityRisk(const std::string &fieldName)
 {
 	if (fieldName == HTTP_FieldName::TRANSFER_ENCODING &&
 		_fieldNameAlreadyProcessed(HTTP_FieldName::CONTENT_LENGTH))
@@ -727,7 +727,7 @@ std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr)
 	return (os);
 }
 
-void HTTP_Request::setBody(std::string data, size_t len)
+void HTTP_Request::setBody(const std::string &data, size_t len)
 {
 	//_body.append(data);
 	_body.assign(data);
@@ -737,7 +737,7 @@ void HTTP_Request::setBody(std::string data, size_t len)
 	this->_parseStatus = HTTP_Request::COMPLETE;
 }
 
-void HTTP_Request::appendToBody(std::string data, size_t len, bool isFinalAppend)
+void HTTP_Request::appendToBody(const std::string &data, size_t len, bool isFinalAppend)
 {
 	// Use append so chunked/split data isn't overwritten
 	_body.append(data);

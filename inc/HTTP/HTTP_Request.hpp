@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/29 16:39:37 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/29 17:54:26 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -67,8 +67,8 @@ public:
 
 
 	int parseHeaders(const char *raw, size_t len);
-	void setBody(std::string data, size_t len);
-	void appendToBody(std::string data, size_t len, bool isFinalAppend);
+	void setBody(const std::string &data, size_t len);
+	void appendToBody(const std::string &data, size_t len, bool isFinalAppend);
 
 	int getParseStatus() const;
 	const std::string &getMethod() const;
@@ -91,7 +91,7 @@ public:
 
 	bool ready();
 	void reset();
-	void setParseStatus(ParseStatus status);
+	void setParseStatus(const ParseStatus status);
 	HTTP_Request getDisplayFriendlyRequest();
 	bool hasHeader(const std::string &fieldName) const;
 	void dumpToFile(const std::string &filename) const;
@@ -105,9 +105,6 @@ private:
 	std::string _url;
 	std::string _version;
 	bool _requestLine_completed;
-
-	// std::map<std::string, std::string> _headers;
-	//
 
 	/* * RFC 9110 Compliance: HTTP header names are case-insensitive. 
 	* Using CaseInsensitiveCompare ensures that "Content-Type" and "content-type" 
@@ -131,25 +128,23 @@ private:
 	void _init_class_vars();
 	void _set_class_vars(const HTTP_Request &other);
 
-	int _parseRequestLine(std::string line);
-	int _parseMethod(std::string method);
-	int _parseURL(std::string url);
-	int _parseVersion(std::string version);
+	int _parseRequestLine(std::string &line);
+	int _parseMethod(const std::string &method);
+	int _parseURL(const std::string &url);
+	int _parseVersion(const std::string &version);
 	int _URLIsValid(const std::string &url);
 
-	int _parseHeaderLine(std::string line);
-	int _countHeaderIfRequired(std::string fieldName);
-	int _fieldNameIsValid(std::string fieldName);
-	int _headerValueIsValid(std::string value);
-	int _fieldNameAlreadyProcessed(std::string eKey);
-	int _fieldNameIsSecurityRisk(std::string eKey);
+	int _parseHeaderLine(std::string &line);
+	int _countHeaderIfRequired(const std::string &fieldName);
+	int _fieldNameIsValid(const std::string &fieldName);
+	int _headerValueIsValid(const std::string &value);
+	int _fieldNameAlreadyProcessed(const std::string &eKey);
+	int _fieldNameIsSecurityRisk(const std::string &eKey);
 	HTTP_Headers _parseMultipartHeaders(const std::string &multipartHeadersStr);
 	std::string _extractFromValue(const std::string &prefix, const std::string &dataString);
 
 	// only if need access to private or protected elements
 	friend class HTTP;
-	friend std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr);
-
 	friend class HTTP_ResponseBuilder; // FOR DEBUG ONLY!!! TO-DO: REMOVE!
 	friend std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr);
 };
