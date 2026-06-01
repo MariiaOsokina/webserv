@@ -6,7 +6,7 @@
 /*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/14 19:03:57 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/26 19:33:37 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/06/02 00:14:23 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,16 +38,6 @@
 
 extern volatile sig_atomic_t g_server_running;
 
-/* Why Pointers <Listener *>:
- 1. Memory Stability: std::vector reallocates memory as it grows. Using
- pointers ensures Listener objects stay at a fixed address, preventing
- dangling pointers in our _fdToServerMap or poll system.
- 2. Polymorphism: Allows storing different types of Listener subclasses
- if the project expands.
- 3. Efficiency: Avoids expensive "deep copies" of Listener objects
- during vector resizing.
- */
-
 
 //Structs to track CGIs
 struct CGIProcess {
@@ -55,14 +45,27 @@ struct CGIProcess {
     int         stdoutFd;
     int         stdinFd;        // write end of body pipe, -1 once body fully sent / closed
     int         connFd;
-    std::string output;
     std::string inputBody;      // request body to drain into stdinFd
     size_t      inputOffset;    // bytes already written to stdinFd
     time_t      startTime;
 
+    // --- Streaming state (CGI stdout -> client socket) ---
+    // headerBuf accumulates CGI output until the header/body boundary
+    // (\r\n\r\n or \n\n); after that, body bytes stream straight to the
+    // client. Capped at WebServ::MAX_CGI_HEADER_SIZE.
+    std::string headerBuf;
+    bool        headersParsed;   // headers parsed and prefix queued to client
+    bool        chunked;         // wrap body in Transfer-Encoding: chunked
+    bool        headOnly;        // suppress body (HEAD request)
+    bool        pollinPaused;    // POLLIN removed for backpressure
+    bool        eofReached;      // reserved, unused
+    bool        responseFailed;  // reserved, unused
+
     CGIProcess()
         : pid(-1), stdoutFd(-1), stdinFd(-1), connFd(-1),
-          inputOffset(0), startTime(0) {}
+          inputOffset(0), startTime(0),
+          headersParsed(false), chunked(false), headOnly(false),
+          pollinPaused(false), eofReached(false), responseFailed(false) {}
 };
 
 class WebServ
@@ -95,27 +98,52 @@ private:
 	void _checkConnTimeouts();
 
 	// --- CGI Handler Methods ---
-    bool _isCGISocket(int fd) const;        // true if fd is a CGI stdout (read) FD
-    bool _isCGIStdinFd(int fd) const;       // true if fd is a CGI stdin (write) FD
+    bool _isCGIStdoutFd(int fd) const;
+    bool _isCGIStdinFd(int fd) const;
     bool _executeCGI(int connFd, const std::string& cgiPath, const std::string& scriptPath);
     void _handleCGIOutput(size_t *index);
     void _handleCGIInput(size_t *index);    // drains body to CGI stdin via POLLOUT
     // Closes stdin FD and unregisters it from poll/map state. If `cursor`
-    // is provided and the removed poll entry was at or before *cursor,
-    // *cursor is decremented so the surrounding loop stays consistent.
+    // is given and the removed poll entry was at/before it, *cursor is
+    // decremented to keep the surrounding loop index valid.
     void _closeCGIStdin(CGIProcess& cgi, size_t *cursor);
     void _checkCGITimeouts();
     void _cleanupCGI(int cgiFd);
-    void _closeCGIPipe(size_t index);
-	void _terminateCGIProcess(int cgiFd); //MO: added
+	void _terminateCGIProcess(int cgiFd);
+
+    // --- CGI streaming helpers ---
+    // Parse the CGI header block from cgi.headerBuf. On success, fill the
+    // response, queue the HTTP prefix + leftover body to conn, and switch
+    // it to POLLOUT. Returns false if more bytes are needed; true once
+    // done (a failure path already emits a 500).
+    bool _tryParseCGIHeaders(CGIProcess& cgi, Connection* conn);
+    // Append `n` body bytes to conn's stream buffer: chunked-framed
+    // (HTTP/1.1) or raw (HTTP/1.0).
+    void _appendBodyChunk(CGIProcess& cgi, Connection* conn,
+                          const char* data, size_t n);
+    // Sync client POLLOUT and CGI-stdout POLLIN to the buffer size
+    // (back-pressure) after the stream buffer changes.
+    void _syncStreamPollFlags(CGIProcess& cgi, Connection* conn);
+    // Synthetic 500, only valid before any header bytes reached the client.
+    void _sendCGIErrorResponse(int connFd);
+    // Look up the poll index of an FD (returns SIZE_MAX if absent).
+    size_t _findPollIndex(int fd) const;
+    // Toggle event bits on a known FD (no-op if FD is not present).
+    void _setPollEvents(int fd, short enable, short disable);
     // ----------------------------------
-	
-	static const int CONNECTION_TIMEOUT = 60; //sec TO-DO change to 60 sec(most common default in ngenx) or parse from confif 
+
+	static const int CONNECTION_TIMEOUT = 60;
 	static const int POLL_TIMEOUT = 1000;	// Wait up to 1 sec for events
 	static const int CGI_TIMEOUT = 30;
 
 	static const int BUFFER_SIZE = 4096;
 	static const int CGI_BUFFER_SIZE = 8192;
+    // CGI header section cap; larger is treated as malformed (500).
+    static const size_t MAX_CGI_HEADER_SIZE = 8192;
+    // Back-pressure on the forward buffer: stop reading CGI stdout above
+    // HIGH_WATER, resume below LOW_WATER. Keeps per-connection RSS small.
+    static const size_t CGI_FORWARD_HIGH_WATER = 65536;
+    static const size_t CGI_FORWARD_LOW_WATER  = 16384;
 	std::vector<Listener *> _listeners;			// all server instances
 	std::vector<pollfd> _pollFds;			// poll array for the whole program
 	std::map<int, Listener *> _fdToListenerMap; // helps quickly find which server owns which FD

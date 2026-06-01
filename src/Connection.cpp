@@ -6,7 +6,7 @@
 /*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/11 12:49:10 by mosokina          #+#    #+#             */
-/*   Updated: 2026/05/26 19:24:46 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/06/01 23:49:48 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,12 +15,16 @@
 Connection::Connection(int fd, Listener *listener): _state(READING_HEADERS),
 												_connectFd(fd),
 												_listener(listener),
+												_streamFinished(false),
+												_streamDrained(false),
+												_streamAborted(false),
 												_expectedBodySize(0),
 												_isChunked(false),
 												_responseBuilder(listener->getConfig())
 {
 	_lastActive = std::time(NULL);
 	_cgi_pid = -1; // -1 means no CGI process is currently running
+	_bytesSent = 0;
 }
 
 Connection::~Connection()
@@ -49,12 +53,17 @@ void Connection::resetForNextRequest()
 	_bytesSent = 0;
 	_state = READING_HEADERS;
 	_chunkedAccumulator.clear();
+	_rawResponse.clear();
+	std::string().swap(_streamBuf);
+	_streamFinished = false;
+	_streamDrained = false;
+	_streamAborted = false;
 	_isChunked = false;
 	_expectedBodySize = 0;
 	_cgi_pid = -1;
 	// Log for debugging:
 	if (!_rawRequest.empty()) {
-		std::cout << "[WebServ] Pipelined data remaining in buffer: " 
+		std::cout << "[WebServ] Pipelined data remaining in buffer: "
 				  << _rawRequest.size() << " bytes." << std::endl;
 	}
 }
@@ -134,11 +143,46 @@ void Connection::handleRead(const char *buffer, ssize_t bytesRead)
 		else
 			_handleStandardBody();
 	}
-	std::cout << "[DEBUG] Bytes in Request object: " << _request.getBody().length() << std::endl;
 }
 
 bool Connection::handleWrite() //bool is finised
 {
+	// --- Streaming path: source bytes from _streamBuf, erase-from-front ---
+	// The buffer is small (bounded by CGI_FORWARD_HIGH_WATER) so the
+	// O(N) erase is cheap. "Finished" means: terminator has been
+	// queued (_streamFinished) AND the queue is empty.
+	if (_state == STREAMING_CGI)
+	{
+		if (_streamBuf.empty())
+		{
+			if (_streamFinished)
+			{
+				_streamDrained = true;
+				return true;
+			}
+			// No data ready right now; WebServ will drop POLLOUT until
+			// more arrives from the CGI.
+			return false;
+		}
+
+		ssize_t sent = send(_connectFd, _streamBuf.data(), _streamBuf.size(), 0);
+		if (sent <= 0)
+		{
+			_state = ERROR;
+			_streamAborted = true;
+			return true;
+		}
+		_streamBuf.erase(0, static_cast<size_t>(sent));
+		this->resetTimeout();
+		if (_streamBuf.empty() && _streamFinished)
+		{
+			_streamDrained = true;
+			return true;
+		}
+		return false;
+	}
+
+	// --- Static path (existing) ---
 	if (_rawResponse.empty())
 		return true; // //MO: check case, Nothing to send
 
@@ -151,7 +195,7 @@ bool Connection::handleWrite() //bool is finised
     if (sent <= 0)
     {
         _state = ERROR;
-        return true; 
+        return true;
     }
 
 	_bytesSent += sent;
@@ -196,10 +240,17 @@ bool Connection::shouldClose() const
 void Connection::prepareResponse()
 {
 	_responseBuilder.build(_response, _request); //MO: CGI starts here!!
-	// Build wire bytes directly into _rawResponse and transfer body
-	// ownership in O(1). Avoids the ostringstream double-copy that was
-	// peaking at ~3× the body and OOM-killing the server under
-	// concurrent 100 MB uploads.
+	// Build wire bytes directly into _rawResponse. Avoids the
+	// ostringstream double-copy of serialize() that peaked at ~3x the
+	// body and OOM-killed the server under concurrent 100 MB uploads.
+	// The body is still copied once into _rawResponse; _body is swapped
+	// out first so it's freed as soon as the append completes (~2x peak).
+	_response.serializeInto(_rawResponse);
+	_bytesSent = 0;
+}
+
+void Connection::prepareResponseDirect()
+{
 	_response.serializeInto(_rawResponse);
 	_bytesSent = 0;
 }
@@ -292,12 +343,10 @@ void Connection::_handleStandardBody()
         _request.appendToBody(_rawRequest.substr(0, toMove), toMove, _request.getBody().length() >= _expectedBodySize); // AI: updated with _request.getBody().length() >= _expectedBodySize
         _rawRequest.erase(0, toMove); // Remove it from the socket buffer
         
-        std::cout << "[DEBUG] Moved " << toMove << " bytes to Request body." << std::endl;
     }
     // CRITICAL: Only set to REQUEST_READY if we actually have all the bytes!
     if (_request.getBody().length() >= _expectedBodySize) {
         _state = REQUEST_READY;
-        std::cout << "[DEBUG] Standard body fully read. Total: " << _request.getBody().length() << std::endl;
     }
 }
 
@@ -349,7 +398,7 @@ void Connection::_handleChunkedBody() {
 		if (_rawRequest.size() - (pos + 2) < chunkSize + 2) return;
 
 		// 5. _handleChunkedBody
-		if (_rawRequest.substr(pos + 2 + chunkSize, 2) != "\r\n") {
+		if (_rawRequest.substr(pos + 2 + chunkSize, 2) != CRLF) {
 			std::cout << "[WebServ] Malformed chunk: missing trailing CRLF" << std::endl;
 			_request.setParseStatus(HTTP_Request::BAD_REQUEST);
 			_state = ERROR;
@@ -376,4 +425,46 @@ bool Connection::_isValidHex(const std::string& s) const
 bool Connection::isChunked() const
 {
 	return (_isChunked);
+}
+
+void Connection::appendToStreamBuffer(const char *data, size_t n)
+{
+	if (n == 0)
+		return;
+	_streamBuf.append(data, n);
+}
+
+void Connection::appendToStreamBuffer(const std::string &s)
+{
+	_streamBuf.append(s);
+}
+
+size_t Connection::streamBufferSize() const
+{
+	return _streamBuf.size();
+}
+
+void Connection::markStreamFinished()
+{
+	_streamFinished = true;
+}
+
+bool Connection::isStreamFinished() const
+{
+	return _streamFinished;
+}
+
+bool Connection::isStreamDrained() const
+{
+	return _streamDrained;
+}
+
+void Connection::markStreamAborted()
+{
+	_streamAborted = true;
+}
+
+bool Connection::isStreamAborted() const
+{
+	return _streamAborted;
 }

@@ -39,30 +39,23 @@ struct CGIHandles {
 };
 
 
-class CGI {
+class CGILauncher {
     public:
-        CGI(const std::string& cgi_path, const std::string& script_path, const HTTP_Request& request);
-        ~CGI();
+        CGILauncher(const std::string& cgi_path, const std::string& script_path, const HTTP_Request& request);
+        ~CGILauncher();
 
         // NON-BLOCKING: Start CGI process. Caller is responsible for
         // writing the request body to stdinFd (non-blocking) and reading
         // CGI output from stdoutFd. Both FDs are non-blocking on return.
         CGIHandles executeNonBlocking();
 
-        // Parse CGI output directly into `response`. Both arguments are
-        // *consumed*: `output` is emptied (body bytes swapped into the
-        // response) and `response` is overwritten in place. Avoids the
-        // implicit copy that `response = parseCGIOutput(...)` would do
-        // on a multi-hundred-MB CGI body.
-        static void parseCGIOutput(std::string& output, HTTP_Response& response);
-
         //check if a file extension can be handled by CGI.
         static bool forCGIResponse(const std::string& filepath, const std::map<std::string, std::string>& cgi_map);
         static std::string getCGIPath(const std::string& filepath, const std::map<std::string, std::string>& cgi_map);
 
     private:
-        std::string _cgi_path;
-        std::string _script_path;
+        std::string _cgiPath;
+        std::string _scriptPath;
         const HTTP_Request& _request;
         std::map<std::string, std::string> _env;
 

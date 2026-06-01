@@ -6,7 +6,7 @@
 /*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:46:32 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/26 19:25:37 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/05/31 22:43:39 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -669,7 +669,7 @@ std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr)
 	if (hr._isDisplayFriendlyRequest)
 	{
 		line_start = "|| ";
-		line_ending = VISIBLE_CRLF "\n";
+		line_ending = VISIBLE_CRLF LF;
 	}
 	os << line_start << hr._method << " " << hr._url << " " << hr._version;
 	os << line_ending;
