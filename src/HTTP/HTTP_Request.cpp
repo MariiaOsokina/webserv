@@ -6,7 +6,7 @@
 /*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:46:32 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/31 22:43:39 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/06/02 00:51:16 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -142,7 +142,6 @@ int HTTP_Request::parseHeaders(const char *raw, size_t len) // MO:SPLIT TO parse
 		{
 			if (!HTTP_Request::_parseHeaderLine(line))
 				/* malformed header line
-				 * TO-DO: or awaiting for more data?
 				 * parseStatus is now set accordingly!
 				 */
 				return (FAILURE);
@@ -222,12 +221,12 @@ const std::string HTTP_Request::getMultipartBoundary() const
 	return (_multipartBoundary);
 }
 
-void HTTP_Request::setParseStatus(ParseStatus status)
+void HTTP_Request::setParseStatus(const ParseStatus status)
 {
 	_parseStatus = status;
 }
 
-HTTP_Request HTTP_Request::getDisplayFriendlyRequest()
+HTTP_Request HTTP_Request::getDisplayFriendlyRequest() const
 {
 	HTTP_Request displayFriendlyRequest(*this);
 	displayFriendlyRequest._isDisplayFriendlyRequest = true;
@@ -259,13 +258,13 @@ void HTTP_Request::dumpToFile(const std::string &filename) const
 	std::cout << "[DEBUG] Request saved/dumped to " << filename_dumped_to << std::endl;
 }
 
-int HTTP_Request::_parseRequestLine(std::string line)
+int HTTP_Request::_parseRequestLine(std::string &line)
 {
 	/*
 	 *	getline removes '\n' (LF), so,
 	 *	only check and remove '\r' (CR).
 	 */
-	if (!removePortion(line, CR))
+	if (!removeLastPortion(line, CR))
 	{
 		_parseStatus = HTTP_Request::BAD_REQUEST;
 		return (FAILURE);
@@ -323,7 +322,7 @@ int HTTP_Request::_parseRequestLine(std::string line)
 	return (SUCCESS);
 }
 
-int HTTP_Request::_parseMethod(std::string method)
+int HTTP_Request::_parseMethod(const std::string &method)
 {
 	if (method == HTTP_Method::GET ||
 		method == HTTP_Method::HEAD ||
@@ -336,7 +335,7 @@ int HTTP_Request::_parseMethod(std::string method)
 	return (FAILURE);
 }
 
-int HTTP_Request::_parseURL(std::string url)
+int HTTP_Request::_parseURL(const std::string &url)
 {
 	if (!_URLIsValid(url))
 		return (FAILURE);
@@ -344,7 +343,7 @@ int HTTP_Request::_parseURL(std::string url)
 	return (SUCCESS);
 }
 
-int HTTP_Request::_parseVersion(std::string version)
+int HTTP_Request::_parseVersion(const std::string &version)
 {
 	if (version == HTTP_Version::v1_0 ||
 		version == HTTP_Version::v1_1)
@@ -355,22 +354,44 @@ int HTTP_Request::_parseVersion(std::string version)
 	return (FAILURE);
 }
 
-int HTTP_Request::_URLIsValid(std::string url)
+int HTTP_Request::_URLIsValid(const std::string &url)
 {
-	/* TO-DO: verify if url is valid */
-	/* 	ex. contains white spaces, control characters,
-	 *	etc. (RFC 9110, 9112, 3986) */
-	(void)url;
+	return (SUCCESS);
+
+	if (url.empty())
+		return (FAILURE);
+
+	size_t pos = 0;
+
+	// PATH, QUERY, AND FRAGMENT COMPONENTS
+	// RFC 3986 Section 3.3 (Path), Section 3.4 (Query), Section 3.5 (Fragment)
+	// Characters must match strict unreserved/reserved specifications or %HH
+	while (pos < url.length())
+	{
+		if (url[pos] == '%')
+		{
+			if (!Utils::isValidPercentEncoded(url, pos))
+				return (FAILURE); // malformed percent escape triplet
+			pos += 3;
+		}
+		else
+		{
+			if (!Utils::isValidUriChar(url[pos]))
+				return (FAILURE); // illegal character present in url string
+			pos++;
+		}
+	}
+
 	return (SUCCESS);
 }
 
-int HTTP_Request::_parseHeaderLine(std::string line)
+int HTTP_Request::_parseHeaderLine(std::string &line)
 {
 	/*
 	 *	getline removes '\n' (LF), so,
 	 *	only check and remove '\r' (CR).
 	 */
-	if (!removePortion(line, CR))
+	if (!removeLastPortion(line, CR))
 	{
 		_parseStatus = HTTP_Request::BAD_REQUEST;
 		return (FAILURE);
@@ -410,8 +431,7 @@ int HTTP_Request::_parseHeaderLine(std::string line)
 	if (lowerKey == "content-length")
 	{
 		size_t value_size_t;
-		// Now 'value' is strictly "15", so numeric parsing will succeed
-		if (numberIsPositive(value) && toNumber(value, value_size_t))
+		if (toNumber(value, value_size_t, FORBID_NEGATIVES))
 		{
 			_headers[HTTP_FieldName::CONTENT_LENGTH] = toString(value_size_t);
 		}
@@ -550,7 +570,7 @@ int HTTP_Request::populateMultipartVars()
 /* this function can include other headers
  * in the future if needed
  */
-int HTTP_Request::_countHeaderIfRequired(std::string fieldName)
+int HTTP_Request::_countHeaderIfRequired(const std::string &fieldName)
 {
 	if (fieldName == HTTP_FieldName::HOST)
 		_headersRequiredCount++;
@@ -558,7 +578,7 @@ int HTTP_Request::_countHeaderIfRequired(std::string fieldName)
 }
 
 /* Defined in RFC 9112, summarized in RFC 9110 */
-int HTTP_Request::_fieldNameIsValid(std::string fieldName)
+int HTTP_Request::_fieldNameIsValid(const std::string &fieldName)
 {
 	const static std::string allowedChars(ALLOWED_CHARS_IN_FIELD_NAME);
 
@@ -579,7 +599,7 @@ int HTTP_Request::_fieldNameIsValid(std::string fieldName)
 }
 
 /* defined in RFC 9112, with semantics summarized in RFC 9110 */
-int HTTP_Request::_headerValueIsValid(std::string value)
+int HTTP_Request::_headerValueIsValid(const std::string &value)
 {
 	for (std::string::size_type i = 0; i < value.size(); ++i)
 	{
@@ -594,7 +614,7 @@ int HTTP_Request::_headerValueIsValid(std::string value)
 	return (SUCCESS);
 }
 
-int HTTP_Request::_fieldNameAlreadyProcessed(std::string fieldName)
+int HTTP_Request::_fieldNameAlreadyProcessed(const std::string &fieldName)
 {
 	if (_headers.find(fieldName) != _headers.end())
 		return (SUCCESS);
@@ -604,7 +624,7 @@ int HTTP_Request::_fieldNameAlreadyProcessed(std::string fieldName)
 /* Disallow CONTENT_LENGTH && TRANSFER_ENCODING headers,
  * both at the same time in the http request to avoid "request smuggling"
  */
-int HTTP_Request::_fieldNameIsSecurityRisk(std::string fieldName)
+int HTTP_Request::_fieldNameIsSecurityRisk(const std::string &fieldName)
 {
 	if (fieldName == HTTP_FieldName::TRANSFER_ENCODING &&
 		_fieldNameAlreadyProcessed(HTTP_FieldName::CONTENT_LENGTH))
@@ -707,7 +727,7 @@ std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr)
 	return (os);
 }
 
-void HTTP_Request::setBody(std::string data, size_t len)
+void HTTP_Request::setBody(const std::string &data, size_t len)
 {
 	//_body.append(data);
 	_body.assign(data);
@@ -717,7 +737,7 @@ void HTTP_Request::setBody(std::string data, size_t len)
 	this->_parseStatus = HTTP_Request::COMPLETE;
 }
 
-void HTTP_Request::appendToBody(std::string data, size_t len, bool isFinalAppend)
+void HTTP_Request::appendToBody(const std::string &data, size_t len, bool isFinalAppend)
 {
 	// Use append so chunked/split data isn't overwritten
 	_body.append(data);

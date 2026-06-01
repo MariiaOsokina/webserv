@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/25 11:32:29 by mosokina          #+#    #+#             */
-/*   Updated: 2026/05/24 11:13:04 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/29 16:36:30 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,17 +36,6 @@ bool setNonBlocking(int fd)
 	if (fd_flags != -1)
 		fcntl(fd, F_SETFD, fd_flags | FD_CLOEXEC);
 	return true;
-}
-
-std::string toUpperCase(std::string &original)
-{
-	std::string upperCaseCopy = original;
-	for (size_t i = 0; i < upperCaseCopy.length(); ++i)
-	{
-		upperCaseCopy[i] = static_cast<char>(std::toupper(
-			static_cast<unsigned char>(upperCaseCopy[i])));
-	}
-	return (upperCaseCopy);
 }
 
 std::string &capitaliseFirstLetters(std::string &str)
@@ -86,23 +75,18 @@ bool replace(std::string &str, const std::string &what, const std::string &with)
 	return true;
 }
 
-bool removePortion(std::string &line, std::string portion)
+bool removeLastPortion(std::string &line, const std::string &portion)
 {
-	if (line.find(portion) == std::string::npos)
-		return (false);
-	line.erase(line.size() - portion.size(), portion.size());
-	return (true);
-}
-
-bool numberIsPositive(std::string value)
-{
-	if (value.empty())
+	if (line.empty() || portion.empty())
 		return (false);
 
-	if (value.find('-') != std::string::npos)
-		return (false);
+	if (Utils::endsWith(line, portion))
+	{
+		line.erase(line.length() - portion.length(), portion.length());
+		return (true);
+	}
 
-	return (true);
+	return (false);
 }
 
 PathType getPathType(const std::string &pathStr)
@@ -138,7 +122,7 @@ std::string Utils::trim(const std::string &str)
 }
 
 /* this function will modify the string itself! */
-std::string &Utils::trim(std::string &str, std::string stripChars)
+std::string &Utils::trim(std::string &str, const std::string &stripChars)
 {
 	std::string::size_type start = 0;
 	std::string::size_type end = str.size();
@@ -164,7 +148,7 @@ std::string Utils::toLowerCase(const std::string &str)
 	std::string res = str;
 
 	for (size_t i = 0; i < str.length(); ++i)
-		res[i] = std::tolower(res[i]);
+		res[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(res[i])));
 
 	return (res);
 }
@@ -174,7 +158,7 @@ std::string Utils::toUpperCase(const std::string &str)
 	std::string res = str;
 
 	for (size_t i = 0; i < str.length(); ++i)
-		res[i] = std::toupper(res[i]);
+		res[i] = static_cast<char>(std::toupper(static_cast<unsigned char>(res[i])));
 
 	return (res);
 }
@@ -245,13 +229,17 @@ std::string Utils::replaceAll(const std::string &src,
 
 std::string Utils::removeQuote(const std::string &value, const char quote)
 {
-	if (value[0] != quote || value.find_last_of(quote) != value.size() - 1)
-		return (value);
+	if (value.size() >= 2 &&
+		value[0] == quote && value.find_last_of(quote) == value.size() - 1)
+		return (value.substr(1, value.size() - 2));
 
-	return (value.substr(1, value.size() - 2));
+	return (value);
 }
 
 std::size_t Utils::countOccurrence(const std::string &haystack, const std::string &needle) {
+	if (needle.empty())
+		return (0);
+
 	size_t occurrence = 0;
 	size_t pos = haystack.find(needle);
 
@@ -260,7 +248,7 @@ std::size_t Utils::countOccurrence(const std::string &haystack, const std::strin
 		pos = haystack.find(needle, pos + needle.size());
 	}
 
-	return occurrence;
+	return (occurrence);
 }
 
 std::string Utils::substrUpTo(const std::string &str, const std::string &needle)
@@ -295,7 +283,7 @@ int Utils::toInt(const std::string &str)
 size_t Utils::toSizeT(const std::string &str)
 {
 	std::stringstream ss(str);
-	int res;
+	size_t res;
 	ss >> res;
 	return (res);
 }
@@ -357,42 +345,12 @@ std::vector<fsItem> Utils::getDirectoryList(const std::string &path)
 
 bool Utils::isReadable(const std::string &pathOnServer)
 {
-	struct stat st;
-
-	if (stat(pathOnServer.c_str(), &st) != 0)
-		return false; // error accessing file
-
-	uid_t uid = getuid();
-	gid_t gid = getgid();
-
-	if (st.st_uid == uid) // checing owner permissions
-		return (st.st_mode & S_IRUSR) != 0;
-
-	else if (st.st_gid == gid) // checking group permissions
-		return (st.st_mode & S_IRGRP) != 0;
-
-	else // checking others permissions
-		return (st.st_mode & S_IROTH) != 0;
+	return access(pathOnServer.c_str(), R_OK) == 0;
 }
 
 bool Utils::isWritable(const std::string &pathOnServer)
 {
-	struct stat st;
-
-	if (stat(pathOnServer.c_str(), &st) != 0)
-		return false; // error accessing file
-
-	uid_t uid = getuid();
-	gid_t gid = getgid();
-
-	if (st.st_uid == uid) // checing owner permissions
-		return (st.st_mode & S_IWUSR) != 0;
-
-	else if (st.st_gid == gid) // checking group permissions
-		return (st.st_mode & S_IWGRP) != 0;
-
-	else // checking others permissions
-		return (st.st_mode & S_IWOTH) != 0;
+	return access(pathOnServer.c_str(), W_OK) == 0;
 }
 
 std::string Utils::getNextAvailableFilename(const std::string &file_name_with_extension)
@@ -407,7 +365,6 @@ std::string Utils::getNextAvailableFilename(const std::string &file_name_with_ex
 	file_name = file_name.substr(0, file_name.length() - file_ext.length());
 
 	std::string filename = file_dir + '/' + file_name + file_ext;
-	std::ifstream infile;
 
 	while (true) {
 		if (!fileExists(filename))
@@ -457,7 +414,10 @@ std::string Utils::dumpToFile(const std::string &filename, const std::string &da
 
 // returns extension with the dot, ex: .txt
 std::string Utils::getExtension(const std::string& path) {
-    size_t dot = path.find_last_of('.');
+	if (path.empty())
+		return ("");
+
+	size_t dot = path.find_last_of('.');
     if (dot == std::string::npos || dot == path.length() - 1) {
         return "";
     }
@@ -477,7 +437,7 @@ std::string Utils::joinPath(const std::string& base, const std::string& relative
     if (base[base.length() - 1] == '/') {
         if (relative[0] == '/') {
             return (base + relative.substr(1));
-        } else if (Utils::startsWith(relative, "./")) { // AI: fix
+        } else if (Utils::startsWith(relative, "./")) { // AI: fixed
 			return (base + relative.substr(2));
 		}
         return (base + relative);
@@ -485,7 +445,7 @@ std::string Utils::joinPath(const std::string& base, const std::string& relative
     } else {
         if (relative[0] == '/') {
             return (base + relative);
-        } else if (Utils::startsWith(relative, "./")) { // AI: fix
+        } else if (Utils::startsWith(relative, "./")) { // AI: fixed
 			return (base + "/" + relative.substr(2));
 		}
         return (base + "/" + relative);
@@ -503,8 +463,7 @@ std::string Utils::joinPath(const std::string& base, const std::string& relative
 //           absolute path!
 std::string Utils::getAbsolutePath(const std::string &relativePath)
 {
-	if (relativePath[0] != '/' ||
-	    Utils::startsWith(relativePath, "./"))
+	if (relativePath[0] != '/')
 	{
 		std::string cwd = Utils::getcwd();
 		return (Utils::joinPath(cwd, relativePath));
@@ -591,7 +550,7 @@ std::string Utils::getMimeType(const std::string& extension) {
     if (ext == ".svg")
         return ("image/svg+xml");
     if (ext == ".ico")
-        return ("image/x-ixon");
+        return ("image/x-icon");
     if (ext == ".pdf")
         return ("application/pdf");
     if (ext == ".txt")
@@ -606,23 +565,31 @@ std::string Utils::getMimeType(const std::string& extension) {
     return "application/octet-stream";
 }
 
-std::string Utils::urlDecode(const std::string& str) {
-    std::string res;
+std::string Utils::urlDecode(const std::string& input)
+{
+	std::string res;
+	if (input.size() < 3)
+		return (res = input);
 
-    for (size_t i = 0; i < str.length(); ++i) {
-        if (str[i] == '%' && i + 2 < str.length()) {
-            int value;
-            std::stringstream ss;
-            ss << std::hex << str.substr(i + 1, 2);
-            ss >> value;
-            res += static_cast<char>(value);
-            i += 2;
-        } else if (str[i] == '+') {
+	for (size_t i = 0; i < input.length(); ++i) {
+        if (input[i] == '%' &&
+			isValidPercentEncoded(input, i)) {
+
+			int value = 0;
+
+			std::stringstream ss;
+			ss << std::hex << input.substr(i + 1, 2);
+			ss >> value;
+
+			res += static_cast<char>(value);
+			i += 2;
+        } else if (input[i] == '+') {
             res += ' ';
         } else {
-            res += str[i];
+            res += input[i];
         }
     }
+
     return (res);
 }
 
@@ -634,12 +601,36 @@ std::string Utils::urlEncode(const std::string& str) {
         if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
             oss << c;
         } else {
-            oss << '%' << std::hex << (int)(unsigned char)c;
+            oss << '%'
+				<< std::uppercase << std::setw(2) << std::setfill('0')
+				<< std::hex << (int)(unsigned char)c
+				<< std::nouppercase;
         }
-    }
+	}
     return (oss.str());
 }
 
+bool Utils::isValidPercentEncoded(const std::string& str, size_t pos)
+{
+	if (pos + 2 >= str.length())
+		return (false);
+
+	char h1 = str[pos + 1];
+	char h2 = str[pos + 2];
+	return (std::isxdigit(static_cast<unsigned char>(h1)) && 
+		std::isxdigit(static_cast<unsigned char>(h2)));
+}
+
+bool Utils::isValidUriChar(char c)
+{
+	const static std::string allowed(ALLOWED_CHARS_IN_URI);
+
+	unsigned char uc = static_cast<unsigned char>(c);
+	if (std::isalnum(uc))
+		return (true);
+
+	return (allowed.find(c) != std::string::npos);
+}
 
 std::string Utils::toString(int n) {
     std::ostringstream oss;

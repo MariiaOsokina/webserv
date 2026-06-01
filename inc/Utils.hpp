@@ -6,17 +6,19 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/26 23:56:58 by mosokina          #+#    #+#             */
-/*   Updated: 2026/05/24 10:33:46 by aistok           ###   ########.fr       */
+/*   Updated: 2026/05/29 15:55:45 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
+#define FORBID_NEGATIVES true
+
 #include <fcntl.h>
 #include <dirent.h>
 #include <sys/stat.h>	// used for stat
-#include <unistd.h>		// getuid(), getgid(), getcwd
+#include <unistd.h>		// stat, access
 #include <cstdlib>		// for NULL
 #include <cctype>
 #include <ctime>
@@ -24,6 +26,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <iomanip>
 
 #include "WebServMacros.hpp"
 
@@ -36,17 +39,29 @@ std::string toString(const T &value)
 }
 
 template <typename T>
-bool toNumber(const std::string &str, T &out)
+bool toNumber(const std::string &str, T &out, bool forbidNegatives = false)
 {
-    std::istringstream iss(str);
-    iss >> out;
+	if (forbidNegatives)
+	{
+		size_t pos = 0;
+		while (pos < str.size())
+		{
+			if (std::isspace(str[pos]) || !std::isdigit(str[pos]))
+				return (false);
+			if (std::isdigit(str[pos]))
+				break;
+			++pos;
+		}
+	}
 
-    return !iss.fail() && iss.eof();
+	std::istringstream iss(str);
+	iss >> out;
+
+	return !iss.fail() && iss.eof();
 }
 
 bool setNonBlocking(int fd);
 
-std::string toUpperCase(std::string &str);
 std::string &capitaliseFirstLetters(std::string &str);
 bool replace(std::string &str, const std::string &from, const std::string &to);
 
@@ -70,8 +85,7 @@ typedef struct fsItem
     fsItem() : size(0), isDir(false), isReadable(false) {}
 } fsItem;
 
-bool removePortion(std::string &line, std::string portion);
-bool numberIsPositive(std::string value);
+bool removeLastPortion(std::string &line, const std::string &portion);
 
 PathType getPathType(const std::string &pathStr);
 
@@ -80,7 +94,7 @@ class Utils
 public:
     /*String Manipulations*/
     static std::string trim(const std::string &str);
-    static std::string &trim(std::string &str, std::string stripChars);
+    static std::string &trim(std::string &str, const std::string &stripChars);
     static std::string toLowerCase(const std::string &str);
     static std::string toUpperCase(const std::string &str);
     static std::vector<std::string> split(const std::string &str, char delimiter);
@@ -122,6 +136,8 @@ public:
     /*URL operations*/
     static std::string urlDecode(const std::string& str);
     static std::string urlEncode(const std::string& str);
+    static bool isValidPercentEncoded(const std::string& str, size_t pos);
+    static bool isValidUriChar(char c);
 
     /*Number conversions*/
     static std::string toString(int n);

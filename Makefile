@@ -6,7 +6,7 @@
 #    By: aistok <aistok@student.42london.com>       +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/01/14 18:42:19 by aistok            #+#    #+#              #
-#    Updated: 2026/05/26 15:43:51 by aistok           ###   ########.fr        #
+#    Updated: 2026/05/28 01:11:01 by aistok           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -147,6 +147,18 @@ fclean: clean
 config_tester:
 	python3 tests/config_tester.py
 
+siege-basic: all
+	siege -c10 -t1m http://localhost:8080
+
+siege-medium: all
+	siege -c50 -t3m -b -f ./tests/siege/www-urls.txt
+
+siege-hard: all
+	siege -c255 -r10 -b -f ./tests/siege/www-urls.txt
+
+siege-very-hard: all
+	siege -c255 -r1000 -b -f ./tests/siege/www-urls.txt
+
 re: fclean all
 
 .PHONY: all clean fclean re \
@@ -154,4 +166,6 @@ re: fclean all
 		runtests core_tests \
 		set_executables \
 		run \
-		42config 42tester
+		42config 42tester \
+		config_tester \
+		siege-basic siege-medium siege-hard siege-very-hard
