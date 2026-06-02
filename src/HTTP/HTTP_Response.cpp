@@ -104,6 +104,30 @@ std::string HTTP_Response::serialize() const
 	return (oss.str());
 }
 
+void HTTP_Response::serializeHeadersInto(std::string &out) const
+{
+	size_t header_estimate = 256 + _headers.size() * 80;
+	out.clear();
+	out.reserve(header_estimate);
+
+	out.append(_version);
+	out.append(" ");
+	out.append(::toString(_status.code));
+	out.append(" ");
+	out.append(_status.text);
+	out.append(CRLF);
+
+	std::map<std::string, std::string>::const_iterator it;
+	for (it = _headers.begin(); it != _headers.end(); ++it)
+	{
+		out.append(it->first);
+		out.append(": ");
+		out.append(it->second);
+		out.append(CRLF);
+	}
+	out.append(CRLF);
+}
+
 void HTTP_Response::serializeInto(std::string &out)
 {
 	// Estimate so we avoid most reallocations. The 256 covers status

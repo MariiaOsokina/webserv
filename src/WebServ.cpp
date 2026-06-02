@@ -6,11 +6,12 @@
 /*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/14 19:03:57 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/26 19:33:12 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/06/01 23:31:43 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <iostream>
+#include <cstdio>     // For sprintf used to frame chunked-encoding headers
 #include "WebServ.hpp"
 #include "ErrorPages.hpp"
 #include "CGI.hpp"
@@ -52,12 +53,10 @@ void WebServ::setup(const std::vector<ServerConfig> &configs)
 {
 	for (size_t i = 0; i < configs.size(); ++i)
 	{
-		// One Listener per (server block, port). Each port in
-		// ServerConfig::ports gets its own socket/bind/listen — the
-		// poll loop already keys on listen FDs, so duplicating the
-		// config across ports is the cheapest way to support
-		// multiple `listen` directives without changing the rest of
-		// the event-loop plumbing.
+		// One Listener (socket/bind/listen) per (server block, port).
+		// The poll loop keys on listen FDs, so reusing the same config
+		// per port handles multiple `listen` directives with no other
+		// plumbing changes.
 		for (size_t p = 0; p < configs[i].ports.size(); ++p)
 		{
 			int port = configs[i].ports[p];
@@ -83,17 +82,11 @@ void WebServ::setup(const std::vector<ServerConfig> &configs)
 	}
 }
 
-/*The Rule:
-1 - CGI PIPES: Priority check for internal pipes.
-Handle CGI output (POLLIN) or process termination (POLLHUP). Use read() to capture the script's response.
-
-2 - READ (POLLIN): Always check this first. Call recv().
-If recv() returns > 0, we got data.
-If recv() returns 0, this is signal that the client closed the connection.
-
-3 - WRITE (POLLOUT): Check this if you have data queued to send.
-
-4 - ERRORS (POLLERR, POLLNVAL, POLLHUP): Use these only as a "fallback" or for fatal system errors.*/
+/* Event dispatch priority per FD:
+   1. CGI pipes (internal) — read() output or handle termination
+   2. POLLIN — recv() data, or 0 means client closed
+   3. POLLOUT — flush queued response
+   4. POLLERR/POLLHUP/POLLNVAL — fallback for abnormal errors */
 
 void WebServ::run(void)
 {
@@ -131,14 +124,13 @@ void WebServ::run(void)
                 _handleCGIInput(&i);
                 continue;
             }
-            if (_isCGISocket(_pollFds[i].fd)) {
+            if (_isCGIStdoutFd(_pollFds[i].fd)) {
                 if (_pollFds[i].revents & (POLLIN | POLLHUP)) {
                     _handleCGIOutput(&i);
                 } else if (_pollFds[i].revents & (POLLERR | POLLNVAL)) {
                     std::cout << "[WebServ] CGI fd: " << _pollFds[i].fd << " removed due to error" << std::endl;
-                    _cleanupCGI(_pollFds[i].fd);
-                    _closeCGIPipe(i); //MO: addded
-                    i--;
+                    _cleanupCGI(_pollFds[i].fd); // already swap-pops the fd out of _pollFds
+                    i--;                         // re-examine whatever got swapped into slot i
                 }
                 continue;
             }
@@ -234,17 +226,13 @@ void WebServ::_closeConnection(size_t index)
 {
     int fd = _pollFds[index].fd;
 
-    // 1. CHECK FOR ORPHANED CGIs BEFORE DESTROYING CONNECTION
+    // 1. Kill any CGI orphaned by this connection before destroying it.
     std::map<int, CGIProcess>::iterator it = _cgiProcesses.begin();
     while (it != _cgiProcesses.end()) {
         if (it->second.connFd == fd) {
             std::cout << "[WebServ] Client dropped. Killing orphaned CGI PID: " << it->second.pid << std::endl;
-            
-            // Call our new helper using the CGI's pipe FD
             _terminateCGIProcess(it->second.stdoutFd);
-            
-            // We MUST break here because the iterator 'it' was just destroyed by the helper!
-            break; 
+            break; // helper invalidated 'it'
         }
         ++it;
     }
@@ -256,8 +244,12 @@ void WebServ::_closeConnection(size_t index)
         _fdToConnMap.erase(fd);
     }
     // 3. REMOVE FROM FD POOL (USING SWAP/POP, O(1) efficiency)
-    _pollFds[index] = _pollFds.back();
-    _pollFds.pop_back();
+    size_t pollIdx = _findPollIndex(fd);
+    if (pollIdx != static_cast<size_t>(-1))
+    {
+        _pollFds[pollIdx] = _pollFds.back();
+        _pollFds.pop_back();
+    }
 
     std::cout << "Closed connection on FD: " << fd << std::endl;
 }
@@ -304,29 +296,23 @@ void WebServ::_readRequest(size_t *index)
     if (conn->getState() == Connection::REQUEST_READY || conn->getState() == Connection::ERROR)
 	{
         std::cout << "[WebServ] Request Complete on FD " << fd << std::endl;
-        // This routes the request and sets the CGI flags if applicable
+        // Routes the request and sets CGI flags if applicable.
         conn->prepareResponse();
-        // --- NEW CGI EXECUTION TRIGGER START ---
-        // If no errors occurred during parsing/routing AND it's flagged as a CGI request
+        // CGI request (and no routing error): launch it non-blocking.
         if (conn->getState() != Connection::ERROR && conn->getResponse().isCGIGenerated())
 		{
-            // Extract the paths saved by the ResponseBuilder
             std::string cgiExecPath = conn->getResponse().getCgiPath();
             std::string scriptPath = conn->getResponse().getScriptPath();
 
             std::cout << "[WebServ] Routing to CGI. Script: " << scriptPath << std::endl;
-            
-            // Start the non-blocking execution
             _executeCGI(fd, cgiExecPath, scriptPath);
-            
-            // CRITICAL: Return immediately! 
-            // Do NOT switch to POLLOUT yet. The CGI state machine will handle that 
-            // when the script finishes.
-            return; 
-        }
-        // --- NEW CGI EXECUTION TRIGGER END ---
 
-        // If it is NOT a CGI request (or an error occurred), proceed normally to send static data
+            // Return now — don't switch to POLLOUT; the CGI state machine
+            // does that once the script produces output.
+            return;
+        }
+
+        // Static response (non-CGI or error): send normally.
         std::cout << "[WebServ] Switching to POLLOUT for static response." << std::endl;
         _updateEvent(*index, POLLOUT, POLLIN);
     }
@@ -350,13 +336,33 @@ void WebServ::_sendResponse(size_t *index)
 	int requestsProcessed = 0;
 	while (requestsProcessed < 10) // Limit to 10 requests per poll trigger
 	{
+		bool wasStreaming = (conn->getState() == Connection::STREAMING_CGI);
 		bool finished = conn->handleWrite();
-		//std::cout << "[DEBUG] Sending Response Body: " << conn->getRawResponse().substr(0, 15) << "..." << std::endl;	
-        std::cout << "[DEBUG] Sending Response Body: " << Utils::substrUpTo(conn->getRawResponse(), CRLF) << std::endl; // AI: added for degubbing purposes, to see response header clearly
+
+		// After each write, if we're in streaming mode, re-evaluate
+		// back-pressure on the matching CGI's stdout. The buffer just
+		// shrank, so we may want to re-enable POLLIN on the CGI side.
+		if (wasStreaming && conn->getState() == Connection::STREAMING_CGI)
+		{
+			for (std::map<int, CGIProcess>::iterator cIt = _cgiProcesses.begin();
+			     cIt != _cgiProcesses.end(); ++cIt)
+			{
+				if (cIt->second.connFd == fd)
+				{
+					_syncStreamPollFlags(cIt->second, conn);
+					break;
+				}
+			}
+		}
+
 		if (finished)
 		{
 			requestsProcessed++;
-			if (conn->shouldClose()) {
+			// A streaming response that ended in abort (post-header
+			// crash, send() failure, etc.) MUST close — we can't
+			// keep the connection alive after a truncated body.
+			bool mustClose = conn->shouldClose() || conn->isStreamAborted();
+			if (mustClose) {
 				std::cout << "[WebServ] Closing connection on FD " << fd << std::endl;
 				_closeConnection(*index);
 				(*index)--;
@@ -370,27 +376,39 @@ void WebServ::_sendResponse(size_t *index)
 
 				// CRITICAL FOR PIPELINING:
 				if (conn->hasBufferedData()) {
-					std::cout << "[WebServ] Pipelined data found (" 
+					std::cout << "[WebServ] Pipelined data found ("
 							  << conn->getRawRequest().size() << " bytes)." << std::endl;
-					
-					_readRequest(index); 
-					
+
+					_readRequest(index);
+
 					// SAFETY CHECK: _readRequest might have encountered a fatal error and closed the connection
 					if (_fdToConnMap.find(fd) == _fdToConnMap.end())
-						return; 
+						return;
 
-					// If a new response was fully prepared, loop to send it IMMEDIATELY 
+					// If a new response was fully prepared, loop to send it IMMEDIATELY
 					// instead of waiting for the next poll() tick
 					if (conn->getState() == Connection::REQUEST_READY || conn->getState() == Connection::ERROR)
-						continue; 
+						continue;
 				}
-				
+
 				// No more complete requests ready to send, return to poll
-				return ; 
+				return ;
 			}
 		}
-		else // send() returned EAGAIN/EWOULDBLOCK. Need to wait for next POLLOUT event.			
+		else
+		{
+			// In streaming mode, a "not finished" with empty buffer
+			// just means "CGI hasn't fed us anything new yet". Drop
+			// POLLOUT so the poll loop doesn't spin — _handleCGIOutput
+			// will re-enable it when more bytes arrive.
+			if (conn->getState() == Connection::STREAMING_CGI &&
+			    conn->streamBufferSize() == 0 &&
+			    !conn->isStreamFinished())
+			{
+				_setPollEvents(fd, 0, POLLOUT);
+			}
 			return ;
+		}
 	}
 }
 
@@ -463,7 +481,7 @@ void WebServ::_updateEvent(size_t index, short enable, short disable)
 	_pollFds[index].events &= ~disable;
 }
 
-bool WebServ::_isCGISocket(int fd) const {
+bool WebServ::_isCGIStdoutFd(int fd) const {
     return (_cgiProcesses.find(fd) != _cgiProcesses.end());
 }
 
@@ -474,7 +492,7 @@ bool WebServ::_isCGIStdinFd(int fd) const {
 bool WebServ::_executeCGI(int connFd, const std::string& cgiPath, const std::string& scriptPath) {
     Connection *conn = _fdToConnMap[connFd];
 
-    CGI cgi(cgiPath, scriptPath, conn->getRequest());
+    CGILauncher cgi(cgiPath, scriptPath, conn->getRequest());
 
     //Start non-blocking CGI execution.
     CGIHandles h = cgi.executeNonBlocking();
@@ -497,13 +515,11 @@ bool WebServ::_executeCGI(int connFd, const std::string& cgiPath, const std::str
     }
     conn->setCgiPid(h.pid);
 
-    // Seed the CGI process record. The body has to outlive the request
-    // because we drain it to the CGI stdin pipe across many POLLOUT
-    // events. Move it (swap, O(1)) out of the Connection's Request
-    // rather than copying — under concurrent 100 MB uploads, copying
-    // doubled per-request memory and triggered OOM kills. The
-    // Connection does not need the body anymore once the CGI has been
-    // started (the response is built from CGI output, not the request).
+    // Seed the CGI record. The body must outlive the request (drained to
+    // stdin across many POLLOUT events), so swap it out (O(1)) instead of
+    // copying — copying doubled RSS under big concurrent uploads and
+    // caused OOM kills. The Connection no longer needs the body once the
+    // CGI is running (the response comes from CGI output).
     CGIProcess process;
     process.pid         = h.pid;
     process.stdoutFd    = h.stdoutFd;
@@ -515,14 +531,12 @@ bool WebServ::_executeCGI(int connFd, const std::string& cgiPath, const std::str
 
     _cgiProcesses[h.stdoutFd] = process;
 
-	// MO: Set to WAITING_FOR_CGI here, because the fork succeeded!
+    // Fork succeeded: connection now waits on the CGI (not read/write).
     conn->setState(Connection::WAITING_FOR_CGI);
-    //We set client/connection state to waiting state i.e: not reading or writing.
     _addNewFdtoPool(h.stdoutFd, POLLIN);
 
-    // If there is a body to send, register the stdin FD with POLLOUT so
-    // the event loop drains it in chunks. If there is no body, close the
-    // write end now — that sends EOF to the CGI script immediately.
+    // With a body, drain it via POLLOUT on stdin; without one, close the
+    // write end now to send EOF immediately.
     if (process.inputBody.empty()) {
         close(h.stdinFd);
         _cgiProcesses[h.stdoutFd].stdinFd = -1;
@@ -534,18 +548,12 @@ bool WebServ::_executeCGI(int connFd, const std::string& cgiPath, const std::str
     return true;
 }
 
-// Closes the CGI stdin FD, removes it from the poll set and the
-// stdin->stdout lookup, and marks the CGIProcess as having no stdin.
-// Safe to call when stdinFd is already -1.
+// Closes the CGI stdin FD, unregisters it from the poll set and the
+// stdin->stdout lookup, and clears cgi.stdinFd. Safe when already -1.
 //
-// `cursor`: optional pointer to the surrounding loop's index. The
-// poll-array removal is O(1) swap+pop, which moves whatever was at the
-// back into the freed slot. If that back-element happened to be the
-// entry the caller is currently sitting on (or one it has not yet
-// processed), the caller's index would silently point at the wrong
-// element. Passing a cursor lets this helper decrement it so the loop
-// stays consistent. Pass NULL when there is no surrounding loop index
-// to keep honest (e.g. teardown paths).
+// cursor: the surrounding loop's index, or NULL. The swap+pop removal
+// moves the back entry into the freed slot; if that entry was at/before
+// the cursor, we decrement it so the loop stays consistent.
 void WebServ::_closeCGIStdin(CGIProcess& cgi, size_t *cursor) {
     int fd = cgi.stdinFd;
     if (fd < 0) {
@@ -592,7 +600,7 @@ void WebServ::_handleCGIInput(size_t *index) {
     if (_pollFds[*index].revents & (POLLERR | POLLNVAL)) {
         std::cerr << "[WebServ] CGI stdin pipe error (revents=" << _pollFds[*index].revents
                   << ") on FD " << stdinFd << std::endl;
-        (*index)--;          // _cleanupCGI removes stdoutFd; this stdin entry stays
+        (*index)--;
         _cleanupCGI(stdoutFd);
         return;
     }
@@ -603,10 +611,8 @@ void WebServ::_handleCGIInput(size_t *index) {
                       remaining);
 
     if (n < 0) {
-        // We are only here because poll() said POLLOUT, so EAGAIN is
-        // unexpected — but if it happens, just wait for the next event.
-        // For any other error (most commonly EPIPE because the CGI
-        // closed stdin early), tear the whole thing down.
+        // poll() said POLLOUT, so any error here (usually EPIPE — CGI
+        // closed stdin early) is fatal; tear the whole thing down.
         std::cerr << "[WebServ] write() to CGI stdin failed on FD " << stdinFd << std::endl;
         (*index)--;
         _cleanupCGI(stdoutFd);
@@ -615,10 +621,9 @@ void WebServ::_handleCGIInput(size_t *index) {
 
     cgi.inputOffset += static_cast<size_t>(n);
 
-    // Treat startTime as a "last activity" watchdog. Without this, large
-    // bodies under concurrency get killed at CGI_TIMEOUT even though the
-    // script is making steady progress — every write to stdin / read from
-    // stdout pushes the deadline forward.
+    // startTime is a "last activity" watchdog: each stdin write / stdout
+    // read pushes the CGI_TIMEOUT deadline forward, so steadily-progressing
+    // large bodies aren't killed mid-transfer.
     cgi.startTime = time(NULL);
 
     if (cgi.inputOffset >= cgi.inputBody.size()) {
@@ -635,103 +640,323 @@ void WebServ::_handleCGIOutput(size_t *index) {
     if (cgiIt == _cgiProcesses.end()) {
         return;
     }
-    
+
     CGIProcess& cgi = cgiIt->second;
-    
+
+    // Look up the owning client connection. May be NULL if the client
+    // dropped — we still need to drain/reap the CGI in that case.
+    Connection* conn = NULL;
+    std::map<int, Connection*>::iterator connIt = _fdToConnMap.find(cgi.connFd);
+    if (connIt != _fdToConnMap.end()) {
+        conn = connIt->second;
+    }
+
     char buffer[CGI_BUFFER_SIZE];
     ssize_t bytes_read = read(cgiFd, buffer, sizeof(buffer));
     std::cout << "[WebServ] CGI bytes read " <<bytes_read << std::endl;
+
     if (bytes_read > 0) {
-        cgi.output.append(buffer, bytes_read);
-        // Reset the watchdog (see _handleCGIInput) — output is progress too.
+        // Output is progress for the watchdog.
         cgi.startTime = time(NULL);
-    } else if (bytes_read == 0) {
-        // ==========================================
-        // EOF - CGI CLOSED STDOUT
-        // ==========================================
 
-        // 1. Reap the child. Blocking wait is safe here: read() returned 0
-        // only after every writer closed the pipe, so the child has either
-        // exited or is moments from it. WNOHANG would risk leaving a zombie
-        // if the kernel hasn't marked the child reapable yet.
-        int status = 0;
-        waitpid(cgi.pid, &status, 0);
+        if (conn == NULL) {
+            // Client gone; just drop bytes until EOF or error.
+            return;
+        }
 
-        // The script "succeeded" only if it exited cleanly AND produced
-        // some output. Per CGI/1.1 the script MUST emit at least a header,
-        // so empty output is a protocol violation; non-zero exit or death
-        // by signal is a crash. Both → 500.
-        bool exitedCleanly = WIFEXITED(status) && WEXITSTATUS(status) == 0;
-        bool cgiFailed     = !exitedCleanly || cgi.output.empty();
+        size_t bufConsumed = 0;
 
-        // 2. Find client/connection and send response
-        std::map<int, Connection*>::iterator it = _fdToConnMap.find(cgi.connFd);
-        if (it != _fdToConnMap.end()) {
-            Connection* conn = it->second;
+        // --- Header phase: accumulate until we find \r\n\r\n / \n\n ---
+        if (!cgi.headersParsed) {
+            size_t headroom = MAX_CGI_HEADER_SIZE - cgi.headerBuf.size();
+            size_t toCopy   = std::min(static_cast<size_t>(bytes_read), headroom);
+            cgi.headerBuf.append(buffer, toCopy);
+            bufConsumed = toCopy;
 
-            if (cgiFailed) {
-                if (WIFSIGNALED(status)) {
-                    std::cout << "[WebServ] CGI killed by signal " << WTERMSIG(status) << std::endl;
-                } else if (!exitedCleanly) {
-                    std::cout << "[WebServ] CGI exited with status " << WEXITSTATUS(status) << std::endl;
-                } else {
-                    std::cout << "[WebServ] CGI produced no output - likely execution failed" << std::endl;
-                }
-                conn->getResponse().setStatus(HTTP_Status::INTERNAL_SERVER_ERROR);
-                conn->setState(Connection::ERROR);
-            } else {
-                // Build the response in place. The previous form
-                // `conn->getResponse() = CGI::parseCGIOutput(output)`
-                // implicitly copied the (potentially huge) body during
-                // operator=.
-                CGI::parseCGIOutput(cgi.output, conn->getResponse());
-                conn->setState(Connection::REQUEST_READY);
-            }
+            _tryParseCGIHeaders(cgi, conn);
 
-            conn->getRequest().dumpToFile("request_cgi"); // AI: DEBUGGING
-            conn->getResponse().dumpToFile("response_cgi"); // AI: DEBUGGING
-
-            conn->prepareResponse();
-
-            // Find client/connection in poll array and switch them to POLLOUT
-            for (size_t i = 0; i < _pollFds.size(); ++i) {
-                if (_pollFds[i].fd == cgi.connFd) {
-                    _updateEvent(i, POLLOUT, POLLIN);
-                    break;
-                }
+            if (!cgi.headersParsed && cgi.headerBuf.size() >= MAX_CGI_HEADER_SIZE) {
+                // Boundary not found within the cap — malformed CGI.
+                // We can still recover with a clean 500 because no
+                // bytes have gone to the client yet.
+                std::cerr << "[WebServ] CGI header section exceeded "
+                          << MAX_CGI_HEADER_SIZE << " bytes — aborting" << std::endl;
+                int saveConnFd = cgi.connFd;
+                _terminateCGIProcess(cgiFd);
+                (*index)--;
+                _sendCGIErrorResponse(saveConnFd);
+                return;
             }
         }
-        
-        // 3. Clean up pipes and maps manually (Since it was successful, we don't kill it).
-        // Defensive: if the CGI exited without reading the entire body, stdinFd
-        // may still be open and registered with POLLOUT — close it before we
-        // erase the CGIProcess record so we don't leak it. Pass `index` so
-        // the helper adjusts our loop cursor if the swap/pop moves what's
-        // at *index.
-        _closeCGIStdin(cgiIt->second, index);
+
+        // --- Body phase: framed chunk straight into the client queue ---
+        if (cgi.headersParsed && bufConsumed < static_cast<size_t>(bytes_read)) {
+            _appendBodyChunk(cgi, conn,
+                             buffer + bufConsumed,
+                             static_cast<size_t>(bytes_read) - bufConsumed);
+        }
+
+        _syncStreamPollFlags(cgi, conn);
+        return;
+    }
+
+    if (bytes_read == 0) {
+        // -------- EOF: CGI closed stdout --------
+        int status = 0;
+        waitpid(cgi.pid, &status, 0);
+        cgi.pid = -1;
+        if (conn) conn->setCgiPid(-1); // reaped here; disarm ~Connection's kill net
+
+        bool exitedCleanly = WIFEXITED(status) && WEXITSTATUS(status) == 0;
+
+        if (!cgi.headersParsed) {
+            // Pre-header failure: we never sent anything → clean 500.
+            if (WIFSIGNALED(status)) {
+                std::cout << "[WebServ] CGI killed by signal "
+                          << WTERMSIG(status) << " before any headers" << std::endl;
+            } else if (!exitedCleanly) {
+                std::cout << "[WebServ] CGI exited "
+                          << WEXITSTATUS(status) << " before any headers" << std::endl;
+            } else {
+                std::cout << "[WebServ] CGI exited cleanly but produced no headers" << std::endl;
+            }
+
+            int saveConnFd = cgi.connFd;
+
+            // Tear down CGI state. _closeCGIStdin handles the stdin
+            // pipe + cursor; close the stdout pipe explicitly.
+            _closeCGIStdin(cgi, index);
+            close(cgiFd);
+            _cgiProcesses.erase(cgiIt);
+            _pollFds[*index] = _pollFds.back();
+            _pollFds.pop_back();
+            (*index)--;
+
+            _sendCGIErrorResponse(saveConnFd);
+            return;
+        }
+
+        // -------- EOF after headers were sent --------
+        if (conn) {
+            if (exitedCleanly) {
+                // Clean finish — emit chunked terminator if applicable.
+                if (cgi.chunked && !cgi.headOnly) {
+                    conn->appendToStreamBuffer("0" DBL_CRLF, 5);
+                }
+            } else {
+                // Post-header crash. Cannot send 500 because the
+                // status line is already on the wire — best we can
+                // do is flush whatever's buffered then close.
+                if (WIFSIGNALED(status)) {
+                    std::cout << "[WebServ] CGI killed by signal "
+                              << WTERMSIG(status) << " mid-stream" << std::endl;
+                } else {
+                    std::cout << "[WebServ] CGI exited "
+                              << WEXITSTATUS(status) << " mid-stream" << std::endl;
+                }
+                conn->markStreamAborted();
+            }
+            conn->markStreamFinished();
+
+            // Make sure POLLOUT is on so the buffered tail flushes.
+            _setPollEvents(cgi.connFd, POLLOUT, POLLIN);
+        }
+
+        // Tear down CGI bookkeeping. Connection stays alive until
+        // its stream buffer drains.
+        _closeCGIStdin(cgi, index);
         close(cgiFd);
-        _fdToConnMap.erase(cgiFd); // MO: Fixed map leak!
         _cgiProcesses.erase(cgiIt);
-        
-        // 4. Remove from poll array (O(1) efficiency)
         _pollFds[*index] = _pollFds.back();
         _pollFds.pop_back();
-        (*index)--; // Adjust index because vector shrank and swapped a new FD here
-        
-    } else {
-        // ==========================================
-        // ERROR - READ FAILED
-        // ==========================================
-        
-        // This helper handles everything: kills script, closes pipe, 
-        // cleans all maps, removes from _pollFds, and sends 500 error!
-        _cleanupCGI(cgiFd); 
-        
-        // We MUST still decrement the index because _cleanupCGI used the 
-        // swap/pop method inside _terminateCGIProcess, meaning the current 
-        // index now holds a completely different FD that needs to be checked.
         (*index)--;
+        return;
     }
+
+    // -------- read() < 0: pipe error --------
+    if (cgi.headersParsed && conn) {
+        // Already streaming — abort the connection.
+        std::cerr << "[WebServ] CGI pipe error mid-stream on FD " << cgiFd << std::endl;
+        conn->markStreamAborted();
+        conn->markStreamFinished();
+        _setPollEvents(cgi.connFd, POLLOUT, POLLIN);
+
+        kill(cgi.pid, SIGKILL);
+        waitpid(cgi.pid, NULL, 0);
+        conn->setCgiPid(-1); // reaped here; disarm ~Connection's kill net
+        _closeCGIStdin(cgi, index);
+        close(cgiFd);
+        _cgiProcesses.erase(cgiIt);
+        _pollFds[*index] = _pollFds.back();
+        _pollFds.pop_back();
+        (*index)--;
+        return;
+    }
+
+    // Pre-header error: clean 500.
+    int saveConnFd = cgi.connFd;
+    _terminateCGIProcess(cgiFd);
+    (*index)--;
+    _sendCGIErrorResponse(saveConnFd);
+}
+
+// --------------------------------------------------------------------
+// CGI streaming helpers
+// --------------------------------------------------------------------
+
+bool WebServ::_tryParseCGIHeaders(CGIProcess& cgi, Connection* conn) {
+    if (cgi.headersParsed) return true;
+
+    // Locate the CGI header/body boundary inside the accumulator.
+    size_t boundaryPos = cgi.headerBuf.find(DBL_CRLF);
+    size_t delimLen = 4;
+    if (boundaryPos == std::string::npos) {
+        size_t alt = cgi.headerBuf.find(LF LF);
+        if (alt != std::string::npos) {
+            boundaryPos = alt;
+            delimLen = 2;
+        } else {
+            return false; // need more bytes
+        }
+    }
+
+    std::string headersPart = cgi.headerBuf.substr(0, boundaryPos);
+
+    HTTP_Response& response = conn->getResponse();
+    response.reset();
+    response.setStatus(HTTP_Status::OK);
+    response.setCGIGenerated(true);
+
+    std::vector<std::string> lines = Utils::split(headersPart, '\n');
+    for (size_t i = 0; i < lines.size(); ++i) {
+        std::string line = Utils::trim(lines[i]);
+        if (line.empty()) continue;
+
+        // NPH (Non-Parsed Header): first line may be "HTTP/1.x <code> ..."
+        if (i == 0 && line.length() > 5 && line.substr(0, 5) == "HTTP/") {
+            std::vector<std::string> parts = Utils::split(line, ' ');
+            if (parts.size() >= 2) {
+                response.setStatus(HTTP_Status::fromCode(Utils::toInt(parts[1])));
+            }
+            continue;
+        }
+
+        size_t colon = line.find(':');
+        if (colon == std::string::npos) continue;
+
+        std::string name  = Utils::trim(line.substr(0, colon));
+        std::string value = Utils::trim(line.substr(colon + 1));
+        std::string low   = Utils::toLowerCase(name);
+
+        if (low == "status") {
+            response.setStatus(HTTP_Status::fromCode(Utils::toInt(value)));
+            continue;
+        }
+        // We own framing. Strip anything the CGI tried to set —
+        // mixing CGI-supplied Content-Length / Transfer-Encoding with
+        // our chunked framing would lie to the client.
+        if (low == "content-length" || low == "transfer-encoding") {
+            continue;
+        }
+        response.getHeaders()[name] = value;
+    }
+
+    // Decide downstream framing. HTTP/1.1 → chunked; otherwise close.
+    HTTP_Request& request = conn->getRequest();
+    bool isHttp11 = (request.getVersion() == HTTP_Version::v1_1);
+    cgi.chunked  = isHttp11;
+    cgi.headOnly = (request.getMethod() == HTTP_Method::HEAD);
+
+    if (cgi.chunked) {
+        response.getHeaders()[HTTP_FieldName::TRANSFER_ENCODING] = "chunked";
+    } else {
+        // HTTP/1.0: no chunked; must close so client sees the boundary.
+        response.getHeaders()[HTTP_FieldName::CONNECTION] = "close";
+    }
+
+    // Push status line + headers + CRLF into the connection's queue.
+    std::string prefix;
+    response.serializeHeadersInto(prefix);
+    conn->appendToStreamBuffer(prefix);
+
+    conn->setState(Connection::STREAMING_CGI);
+    _setPollEvents(cgi.connFd, POLLOUT, POLLIN);
+
+    cgi.headersParsed = true;
+
+    // Bytes that came in past the boundary in the header buffer ARE
+    // the start of the body — frame them as the first chunk.
+    size_t bodyStart = boundaryPos + delimLen;
+    if (bodyStart < cgi.headerBuf.size()) {
+        _appendBodyChunk(cgi, conn,
+                         cgi.headerBuf.data() + bodyStart,
+                         cgi.headerBuf.size() - bodyStart);
+    }
+    std::string().swap(cgi.headerBuf); // free header accumulator
+    return true;
+}
+
+void WebServ::_appendBodyChunk(CGIProcess& cgi, Connection* conn,
+                                const char* data, size_t n) {
+    if (n == 0 || conn == NULL) return;
+    if (cgi.headOnly) return; // HEAD: discard CGI body silently
+
+    if (cgi.chunked) {
+        // <hex>\r\n<data>\r\n
+        char hexBuf[32];
+        int hexLen = std::sprintf(hexBuf, "%lx" CRLF, static_cast<unsigned long>(n));
+        if (hexLen > 0) {
+            conn->appendToStreamBuffer(hexBuf, static_cast<size_t>(hexLen));
+        }
+        conn->appendToStreamBuffer(data, n);
+        conn->appendToStreamBuffer(CRLF, 2);
+    } else {
+        conn->appendToStreamBuffer(data, n);
+    }
+}
+
+void WebServ::_syncStreamPollFlags(CGIProcess& cgi, Connection* conn) {
+    if (conn == NULL) return;
+
+    size_t bufSize = conn->streamBufferSize();
+
+    // POLLOUT on client whenever we have something queued. (Cleared
+    // again in _sendResponse once the buffer drains.)
+    if (bufSize > 0) {
+        _setPollEvents(cgi.connFd, POLLOUT, 0);
+    }
+
+    // Back-pressure: pause/resume CGI reads based on buffer size.
+    if (bufSize >= CGI_FORWARD_HIGH_WATER && !cgi.pollinPaused) {
+        _setPollEvents(cgi.stdoutFd, 0, POLLIN);
+        cgi.pollinPaused = true;
+    } else if (bufSize < CGI_FORWARD_LOW_WATER && cgi.pollinPaused) {
+        _setPollEvents(cgi.stdoutFd, POLLIN, 0);
+        cgi.pollinPaused = false;
+    }
+}
+
+void WebServ::_sendCGIErrorResponse(int connFd) {
+    std::map<int, Connection*>::iterator it = _fdToConnMap.find(connFd);
+    if (it == _fdToConnMap.end()) return;
+    Connection* conn = it->second;
+
+    conn->getResponse().setStatus(HTTP_Status::INTERNAL_SERVER_ERROR);
+    conn->setState(Connection::ERROR);
+    conn->prepareResponseDirect();
+
+    _setPollEvents(connFd, POLLOUT, POLLIN);
+}
+
+size_t WebServ::_findPollIndex(int fd) const {
+    for (size_t i = 0; i < _pollFds.size(); ++i) {
+        if (_pollFds[i].fd == fd) return i;
+    }
+    return static_cast<size_t>(-1);
+}
+
+void WebServ::_setPollEvents(int fd, short enable, short disable) {
+    _updateEvent(_findPollIndex(fd), enable, disable);
 }
 
 void WebServ::_checkCGITimeouts() {
@@ -747,16 +972,9 @@ void WebServ::_checkCGITimeouts() {
 
     for (size_t i = 0; i < to_cleanup.size(); ++i) {
         std::cout << "[WebServ] CGI timeout: killing process on FD " << to_cleanup[i] << std::endl;
+        // _cleanupCGI fully tears down the CGI, including removing its
+        // stdout FD from _pollFds, so no extra poll-array cleanup here.
         _cleanupCGI(to_cleanup[i]);
-        
-        // Find the pipe in poll array and remove it safely
-        for (size_t j = 0; j < _pollFds.size(); ++j) {
-            if (_pollFds[j].fd == to_cleanup[i]) {
-                _closeCGIPipe(j);
-                j--;
-                break;
-            }
-        }
     }
 }
 
@@ -766,35 +984,29 @@ void WebServ::_cleanupCGI(int cgiFd) {
         return;
     }
 
-    // Save the client FD before we destroy the CGI process!
-    int connFd = cgiIt->second.connFd; 
+    // Save the client FD and headers-sent state before we destroy
+    // the CGI bookkeeping — _terminateCGIProcess will erase it.
+    int  connFd        = cgiIt->second.connFd;
+    bool headersParsed = cgiIt->second.headersParsed;
 
     // 1. Silently kill the script and clean up its pipes
     _terminateCGIProcess(cgiFd);
 
-    // 2. Send the 500 Internal Server Error to the client
+    // 2. React according to what (if anything) is already on the wire.
     std::map<int, Connection*>::iterator connIt = _fdToConnMap.find(connFd);
-    if (connIt != _fdToConnMap.end()) {
-        Connection* conn = connIt->second;
-        conn->getResponse().setStatus(HTTP_Status::INTERNAL_SERVER_ERROR);
-        conn->prepareResponse();
-        
-        conn->setState(Connection::ERROR);
-        
-        // Find client/connection and set to write
-        for (size_t i = 0; i < _pollFds.size(); ++i) {
-            if (_pollFds[i].fd == connFd) {
-                _updateEvent(i, POLLOUT, POLLIN);
-                break;
-            }
-        }
-    }
-}
+    if (connIt == _fdToConnMap.end()) return;
+    Connection* conn = connIt->second;
 
-// Custom closer for CGI pipes, so it doesn't accidentally trigger your Connection closer
-void WebServ::_closeCGIPipe(size_t index) {
-    _pollFds[index] = _pollFds.back();
-    _pollFds.pop_back();
+    if (!headersParsed) {
+        // Nothing forwarded yet — clean 500 is still possible.
+        _sendCGIErrorResponse(connFd);
+    } else {
+        // Status line + some body already on the wire. Can't change
+        // status now — flush what's buffered then close.
+        conn->markStreamAborted();
+        conn->markStreamFinished();
+        _setPollEvents(connFd, POLLOUT, POLLIN);
+    }
 }
 
 // A silent killer: Just kills the process, closes both pipes, and removes
@@ -803,27 +1015,26 @@ void WebServ::_terminateCGIProcess(int cgiFd) {
     std::map<int, CGIProcess>::iterator it = _cgiProcesses.find(cgiFd);
     if (it == _cgiProcesses.end()) return;
 
-    // 1. Close the stdin side first (if still open). Tearing down the
-    // write end before SIGKILL ensures any in-flight write() in the
-    // child would see EPIPE rather than blocking — and it removes the
-    // stdin FD from the poll set so the next iteration of the loop
-    // doesn't try to dispatch on a dead FD. No loop cursor here — this
-    // helper is also called from cleanup paths outside the poll loop.
+    // 1. Close stdin first: drops it from the poll set and makes any
+    // in-flight child write() see EPIPE instead of blocking. NULL cursor —
+    // also called outside the poll loop.
     _closeCGIStdin(it->second, NULL);
 
-    // 2. Kill process and prevent zombies. Note: use blocking waitpid
-    // after SIGKILL — the child becomes reapable almost instantly and
-    // WNOHANG risks leaving a zombie if the kernel hasn't marked it yet.
+    // 2. Kill and reap. Blocking waitpid after SIGKILL — the child is
+    // reapable almost instantly; WNOHANG could leave a zombie.
     kill(it->second.pid, SIGKILL);
     waitpid(it->second.pid, NULL, 0);
+
+    // Reaped here — clear the owning connection's pid so ~Connection
+    // doesn't kill/waitpid a stale (possibly recycled) PID.
+    std::map<int, Connection*>::iterator c = _fdToConnMap.find(it->second.connFd);
+    if (c != _fdToConnMap.end())
+        c->second->setCgiPid(-1);
 
     // 3. Close the stdout pipe
     close(cgiFd);
 
-    // 4. Safely remove from connection map
-    _fdToConnMap.erase(cgiFd);
-
-    // 5. Remove stdout FD from poll array (O(1) efficiency)
+    // 4. Remove stdout FD from poll array (O(1) efficiency)
     for (size_t i = 0; i < _pollFds.size(); ++i) {
         if (_pollFds[i].fd == cgiFd) {
             _pollFds[i] = _pollFds.back();
@@ -832,6 +1043,6 @@ void WebServ::_terminateCGIProcess(int cgiFd) {
         }
     }
 
-    // 6. Remove from CGI map
+    // 5. Remove from CGI map
     _cgiProcesses.erase(it);
 }

@@ -44,6 +44,10 @@ public:
 	// instead of the 2–3 ostringstream-based serialize() incurs. Used
 	// on the hot path; large CGI responses depend on this to fit in RAM.
 	void serializeInto(std::string &out);
+	// Status line + headers + CRLF, body excluded. Used by the CGI
+	// streaming path so the headers can go on the wire before the
+	// CGI's body has even finished arriving.
+	void serializeHeadersInto(std::string &out) const;
 	void setContent(const std::string &text);
 	void appendToContent(const std::string &data);
 	

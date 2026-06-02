@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP_Request.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:46:32 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/29 18:01:42 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/02 00:51:16 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -689,7 +689,7 @@ std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr)
 	if (hr._isDisplayFriendlyRequest)
 	{
 		line_start = "|| ";
-		line_ending = VISIBLE_CRLF "\n";
+		line_ending = VISIBLE_CRLF LF;
 	}
 	os << line_start << hr._method << " " << hr._url << " " << hr._version;
 	os << line_ending;

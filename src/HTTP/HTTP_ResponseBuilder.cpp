@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP_ResponseBuilder.cpp                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
+/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/20 10:48:39 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/29 18:14:15 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/02 00:53:21 by mosokina         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -166,25 +166,17 @@ void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 
 	_pathType = getPathType(_pathOnServer);
 
-	// 3. MO: NEW CGI Logic Integration
-	// Route by extension whenever cgi_pass matches — even when the script
-	// does not exist on disk. The cgi_pass directive selects the handler
-	// by extension; whether the request makes sense without a file is up
-	// to the CGI script itself (the 42 cgi_tester echoes stdin and does
-	// not care). Without this, requests to non-existent .bla files fall
-	// through to the upload handler, which made the 42 tester fail with
-	// "bad cgi returned body content".
 	if ((_pathType == PATH_FILE || _pathType == PATH_NONE)
-		&& (method == "GET" || method == "POST"))
+		&& (method == HTTP_Method::GET || method == HTTP_Method::POST))
 	{
 		std::string ext = Utils::getExtension(_pathOnServer);
 		std::cout << "[DEBUG] Checking CGI for Path: " << _pathOnServer << std::endl;
 		std::cout << "[DEBUG] Ext extracted: [" << ext << "]" << std::endl;
-		std::cout << "[DEBUG] Is ext in map? " << (CGI::forCGIResponse(_pathOnServer, _location.cgi_extensions) ? "YES" : "NO") << std::endl;
+		std::cout << "[DEBUG] Is ext in map? " << (CGILauncher::forCGIResponse(_pathOnServer, _location.cgi_extensions) ? "YES" : "NO") << std::endl;
 
-		if (CGI::forCGIResponse(_pathOnServer, _location.cgi_extensions))
+		if (CGILauncher::forCGIResponse(_pathOnServer, _location.cgi_extensions))
 		{
-			std::string cgi_path = CGI::getCGIPath(_pathOnServer, _location.cgi_extensions);
+			std::string cgi_path = CGILauncher::getCGIPath(_pathOnServer, _location.cgi_extensions);
 
 			response.setCGIGenerated(true);
 			response.setCgiPath(cgi_path);
