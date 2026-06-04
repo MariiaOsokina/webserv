@@ -1,0 +1,26 @@
+# EditorConfig helps developers define and maintain consistent
+# coding styles between different editors and IDEs.
+root = true
+
+# Global settings for all files
+[*]
+indent_style = tab
+indent_size = 4
+tab_width = 4
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# C++ specific overrides (if needed, though globals match your needs)
+[*.{cpp,hpp,h,cc,cxx}]
+indent_style = tab
+indent_size = 4
+
+# Web files configuration
+[*.{html,css}]
+indent_style = tab
+indent_size = 4
+
+# WebServ config files
+[*.{conf}]
+indent_style = tab
+indent_size = 4
