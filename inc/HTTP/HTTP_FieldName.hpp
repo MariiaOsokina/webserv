@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/12 14:37:18 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/04 16:55:31 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 16:59:55 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,8 @@
 #define HTTP_FIELDNAME_HPP
 
 #include "HTTP_Defines.hpp"
+
+#include <string>
 
 /*
  * Minimal set of headers in a request
