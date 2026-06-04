@@ -6,12 +6,14 @@
 #    By: aistok <aistok@student.42london.com>       +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/01/14 18:42:19 by aistok            #+#    #+#              #
-#    Updated: 2026/05/28 01:11:01 by aistok           ###   ########.fr        #
+#    Updated: 2026/06/04 16:23:00 by aistok           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
-CC			=	c++
-CFLAGS		=	-Wall -Werror -Wextra -std=c++98
+CC			=	clang++
+# in order for clang++ to be able to locate required
+# includes like <iostream> etc @clang++includes.txt is needed
+CFLAGS		=	-Wall -Werror -Wextra -std=c++98 @clang++includes.txt
 #DFLAGS		=	-g3 -O0
 #DFLAGS		=	-fsanitise=address
 RM			=	rm -rf
