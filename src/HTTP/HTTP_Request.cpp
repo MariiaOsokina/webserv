@@ -6,11 +6,24 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:46:32 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/04 16:48:26 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 18:35:25 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "WebServMacros.hpp"
+#include "HTTP/HTTP_Defines.hpp"
+#include "HTTP/HTTP_Method.hpp"
+#include "HTTP/HTTP_Version.hpp"
+#include "HTTP/HTTP_FieldName.hpp"
 #include "HTTP/HTTP_Request.hpp"
+#include "Utils.hpp"
+
+#include <cctype>
+#include <exception>
+#include <iostream>
+#include <sstream>
+#include <stdexcept>
+#include <vector>
 
 void HTTP_Request::_init_class_vars()
 {

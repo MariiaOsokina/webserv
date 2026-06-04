@@ -6,22 +6,23 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/04 09:02:35 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 18:23:27 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef HTTP_RESPONSE_HPP
 #define HTTP_RESPONSE_HPP
 
+#include "HTTP_Method.hpp"
+#include "HTTP_Version.hpp"
+#include "HTTP_Status.hpp"
+#include "HTTP_FieldName.hpp"
+#include "Utils.hpp"
+
 #include <iostream>
 #include <sstream>
 #include <map>
-
-#include "HTTP_Version.hpp"
-#include "HTTP_Status.hpp"
-#include "HTTP_Method.hpp"
-#include "HTTP_FieldName.hpp"
-#include "Utils.hpp"
+#include <string>
 
 class HTTP_Response
 {

@@ -6,24 +6,27 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/04 14:32:45 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 18:18:39 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef HTTP_REQUEST_HPP
 #define HTTP_REQUEST_HPP
 
+#include "HTTP_Method.hpp"
 #include "HTTP_Version.hpp"
 #include "HTTP_Status.hpp"
-#include "HTTP_Method.hpp"
 #include "HTTP_FieldName.hpp"
 #include "Utils.hpp"
 
+#include <strings.h> // For strcasecmp
+#include <stddef.h>
+
 #include <iostream>
 #include <map>
-#include <strings.h> // For strcasecmp
-#include <sstream>	 // stringbuf
-#include <istream>	 // istream
+#include <sstream> // stringbuf
+#include <istream> // istream
+#include <string>
 
 struct CaseInsensitiveCompare
 {

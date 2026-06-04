@@ -6,11 +6,16 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/11 17:53:52 by aaladeok          #+#    #+#             */
-/*   Updated: 2026/06/04 16:45:30 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 18:39:25 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "Utils.hpp"
 #include "Config.hpp"
+
+#include <sstream>
+#include <cctype>
+#include <cstdlib>
 
 /*ConfigException class methods*/
 ConfigException::ConfigException(const std::string &msg, int line)

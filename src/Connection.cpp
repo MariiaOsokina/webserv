@@ -6,11 +6,24 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/11 12:49:10 by mosokina          #+#    #+#             */
-/*   Updated: 2026/06/04 16:46:49 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 18:44:15 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "HTTP/HTTP.hpp"
 #include "Connection.hpp"
+#include "Listener.hpp"
+
+#include <strings.h>
+#include <sys/socket.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+#include <iostream>
+#include <map>
+#include <cctype>
+#include <cstdlib>
+#include <ctime>
 
 Connection::Connection(int fd, Listener *listener) : _state(READING_HEADERS),
 													 _connectFd(fd),

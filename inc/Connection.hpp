@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/11 12:49:22 by mosokina          #+#    #+#             */
-/*   Updated: 2026/06/04 14:26:24 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 18:26:55 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,16 +14,22 @@
 #define CONNECTION_HPP
 
 #include "HTTP/HTTP.hpp"
+#include "HTTP/HTTP_Request.hpp"
+#include "HTTP/HTTP_Response.hpp"
+#include "HTTP/HTTP_ResponseBuilder.hpp"
 #include "Listener.hpp"
+
+#include <unistd.h>	  // close
+#include <signal.h>	  // For SIGKILL
+#include <sys/wait.h> // For waitpid
+#include <sys/types.h>
 
 #include <iostream>
 #include <string>
 #include <ctime>
 #include <cstdlib>
 
-#include <unistd.h>	  // close
-#include <signal.h>	  // For SIGKILL
-#include <sys/wait.h> // For waitpid
+class Listener;
 
 class Connection
 {

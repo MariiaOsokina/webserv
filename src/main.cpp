@@ -6,15 +6,18 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/14 19:02:21 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/04 14:28:43 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 18:45:38 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "WebServ.hpp"
-#include "Listener.hpp"
 #include "Config.hpp"
+#include "WebServ.hpp"
+
+#include <bits/types/sig_atomic_t.h>
 
 #include <iostream>
+#include <string>
+#include <exception>
 #include <csignal>
 #include <clocale>
 

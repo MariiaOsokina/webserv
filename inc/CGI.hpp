@@ -6,20 +6,26 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/11 17:53:52 by aaladeok          #+#    #+#             */
-/*   Updated: 2026/06/04 09:14:17 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 18:26:11 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef CGI_HPP
 #define CGI_HPP
 
+#include "Utils.hpp"
+#include "HTTP/HTTP_Request.hpp"
+
+#include <sys/wait.h>
+#include <signal.h>
+#include <sys/types.h>
+
 #include <iostream>
 #include <map>
 #include <cstring>
-#include <sys/wait.h>
-#include <signal.h>
-#include "Utils.hpp"
-#include "HTTP/HTTP_Request.hpp"
+#include <string>
+
+class HTTP_Request;
 
 // Triple returned by executeNonBlocking(): pid, stdin (parent writes
 // the body), stdout (parent reads CGI output). All -1 on failure.

@@ -6,11 +6,19 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/11 12:49:30 by mosokina          #+#    #+#             */
-/*   Updated: 2026/06/04 16:47:44 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 18:49:34 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "MockTestFnctions.hpp"
+
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+#include <iostream>
+#include <string>
+#include <vector>
 
 // FOR TESTING (runTemporaryTest() should be replaced by run() with poll() approach):
 void runTemporaryTest(WebServ &ws)

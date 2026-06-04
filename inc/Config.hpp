@@ -6,12 +6,16 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/11 17:53:52 by aaladeok          #+#    #+#             */
-/*   Updated: 2026/06/04 06:51:25 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 18:26:32 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
+
+#include "Utils.hpp"
+
+#include <stddef.h>
 
 #include <iostream>
 #include <string>
@@ -22,7 +26,7 @@
 #include <fstream>
 #include <sstream>
 #include <cctype>
-#include "Utils.hpp"
+#include <exception>
 
 struct LocationConfig
 {

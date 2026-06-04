@@ -6,11 +6,23 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/25 11:32:29 by mosokina          #+#    #+#             */
-/*   Updated: 2026/06/04 16:47:58 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 18:50:14 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "WebServMacros.hpp"
 #include "Utils.hpp"
+
+#include <dirent.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include <iomanip>
+#include <iterator>
+#include <fstream>
+#include <stdexcept>
+#include <ctime>
 
 /*
  * FD_CLOEXEC: Prevents File Descriptor "leaks" across processes.

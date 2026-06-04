@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/14 19:03:57 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/04 14:30:32 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 18:29:21 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,20 +28,24 @@
 #include "ErrorPages.hpp"
 #include "CGI.hpp"
 
+#include <poll.h> // For struct pollfd
+#include <sys/types.h>
+#include <sys/wait.h> // For waitpid and WNOHANG
+#include <signal.h>	  // For kill and SIGKILL
+#include <bits/types/sig_atomic_t.h>
+
 #include <iostream>
 #include <vector>
 #include <map>
-
 #include <csignal>
 #include <cerrno>
 #include <cstring>
 #include <cstdio> // For sprintf used to frame chunked-encoding headers
 #include <ctime>
+#include <string>
 
-#include <poll.h> // For struct pollfd
-#include <sys/types.h>
-#include <sys/wait.h> // For waitpid and WNOHANG
-#include <signal.h>	  // For kill and SIGKILL
+class Connection;
+struct ServerConfig;
 
 extern volatile sig_atomic_t g_server_running;
 

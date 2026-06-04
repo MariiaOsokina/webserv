@@ -15,19 +15,21 @@
 
 // TO-DO update based on func used in the code!!
 
+#include "Config.hpp"
+#include "Utils.hpp"
+
 #include <arpa/inet.h>	// htons
 #include <fcntl.h>		// fcntl, O_NONBLOCK
 #include <netdb.h>		// getaddrinfo, freeaddrinfo
 #include <sys/socket.h> // socket, bind, listen
 #include <sys/types.h>	// types for sockets
 #include <unistd.h>		// close
+
 #include <iostream>
 #include <stdexcept>
 #include <cerrno>
 #include <cstring>
-
-#include "Config.hpp"
-#include "Utils.hpp"
+#include <string>
 
 class Listener
 {

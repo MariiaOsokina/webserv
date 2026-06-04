@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/26 23:56:58 by mosokina          #+#    #+#             */
-/*   Updated: 2026/06/03 20:14:00 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 18:28:39 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,11 +15,14 @@
 
 #define FORBID_NEGATIVES true
 
+#include "WebServMacros.hpp"
+
 #include <fcntl.h>
 #include <dirent.h>
 #include <sys/stat.h> // used for stat
 #include <unistd.h>	  // stat, access
-#include <cstdlib>	  // for NULL
+
+#include <cstdlib> // for NULL
 #include <cctype>
 #include <ctime>
 #include <fstream>
@@ -27,8 +30,6 @@
 #include <string>
 #include <vector>
 #include <iomanip>
-
-#include "WebServMacros.hpp"
 
 template <typename T>
 std::string toString(const T &value)

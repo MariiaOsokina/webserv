@@ -6,11 +6,21 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/11 17:53:52 by aaladeok          #+#    #+#             */
-/*   Updated: 2026/06/04 16:45:12 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 18:39:01 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "WebServMacros.hpp"
+#include "HTTP/HTTP_Request.hpp"
+#include "Utils.hpp"
 #include "CGI.hpp"
+
+#include <signal.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+#include <iostream>
+#include <cstring>
 
 CGILauncher::CGILauncher(const std::string &cgi_path, const std::string &script_path, const HTTP_Request &request)
 	: _cgiPath(cgi_path), _scriptPath(script_path), _request(request)
