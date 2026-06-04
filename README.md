@@ -30,7 +30,7 @@ Manual test via a web browser (we used FireFox):
 2. after the web server is up and running, navigate to
    http://localhost:8080 where you should see a simple html
    page with few buttons, allowing tests for:
-   
+
    - readme.md, showing the functioning of the GET method;
      this and all other buttons are involved in this, since
      without the GET method, no page would load.
@@ -77,7 +77,7 @@ Automated test, created by Maria, to test the web server's main
 core functionality:
 
 1. in one terminal run:
-   
+
    make run
 
 2. in another terminal run:
@@ -92,7 +92,7 @@ Automated test, running the 42 tester:
 
 2. in another terminal run:
 
-   make 42tester   
+   make 42tester
 
    And follow the instructions (just hit ENTER) as everything
    is configured as asked (www_42tester has the needed files
@@ -124,12 +124,12 @@ and benchmarking utility:
 3. For a basic 1 minute stress test, simulating 10 concurrent
    client connecting run:
 
-   siege -c10 -t1m http://localhost:8080
+   make siege-basic
 
 4. For a medium 3 minute stress test, with no delay between
    iterations and with 50 concurrent client connections, run:
 
-   siege -c50 -t3m -b -f ./tests/siege/www-urls.txt
+   make siege-medium
 
    The siege-www-urls.txt contains valid links to three
    different files for siege to randomly ask for via the
@@ -139,12 +139,12 @@ and benchmarking utility:
    concurrent client connections, each repeating 10 times and
    with no delay between the requests, run:
 
-   siege -c255 -r10 -b -f ./tests/siege/www-urls.txt
+   make siege-hard
 
 6. For a very stressful test, where each concurrent client
    will repeat 1000 times, we can run:
 
-   siege -c255 -r1000 -b -f ./tests/siege/www-urls.txt
+   make siege-very-hard
 
    Some errors are shown by siege, but please note, our
    web server stands the ground and keeps running with
@@ -165,7 +165,7 @@ and benchmarking utility:
 
   AI has been used to research, explain terms and concepts
   and to provide small code samples.
-  
+
   AI has also been tested, to speed up development, by
   generating the shell script ./tests/ai_gen_requests.sh prompted
   by Atti in about 10 sentences, which worked at the first try
