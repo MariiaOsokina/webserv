@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP_Response.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/26 19:27:04 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/06/03 21:59:07 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,9 +22,9 @@ void HTTP_Response::_init_class_vars()
 
 	_isHEADresponse = false;
 	_isCGIGenerated = false;
-	
+
 	_body = "";
-	
+
 	_cgiPath = "";
 	_scriptPath = "";
 }
@@ -38,9 +38,9 @@ void HTTP_Response::_set_class_vars(const HTTP_Response &other)
 
 	_isHEADresponse = other._isHEADresponse;
 	_isCGIGenerated = other._isCGIGenerated;
-	
+
 	_body = other._body;
-	
+
 	_cgiPath = other._cgiPath;
 	_scriptPath = other._scriptPath;
 }
@@ -266,20 +266,24 @@ std::ostream &operator<<(std::ostream &os, const HTTP_Response &hResp)
 	return (os);
 }
 
-void HTTP_Response::setCgiPath(const std::string &path) {
-    _cgiPath = path;
+void HTTP_Response::setCgiPath(const std::string &path)
+{
+	_cgiPath = path;
 }
 
-std::string HTTP_Response::getCgiPath() const {
-    return _cgiPath;
+std::string HTTP_Response::getCgiPath() const
+{
+	return _cgiPath;
 }
 
-void HTTP_Response::setScriptPath(const std::string &path) {
-    _scriptPath = path;
+void HTTP_Response::setScriptPath(const std::string &path)
+{
+	_scriptPath = path;
 }
 
-std::string HTTP_Response::getScriptPath() const {
-    return _scriptPath;
+std::string HTTP_Response::getScriptPath() const
+{
+	return _scriptPath;
 }
 
 void HTTP_Response::dumpToFile(const std::string &filename) const
@@ -287,18 +291,3 @@ void HTTP_Response::dumpToFile(const std::string &filename) const
 	std::string filename_dumped_to = Utils::dumpToFile(filename, serialize());
 	std::cout << "[DEBUG] Response saved/dumped to " << filename_dumped_to << std::endl;
 }
-
-/*
-void HTTP_Response::setBody(std::string &data, size_t len)
-{
-	(void)data;
-	(void)len;
-}
-
-void HTTP_Response::appendToBody(std::string &data, size_t len, bool isFinalAppend)
-{
-	(void)data;
-	(void)len;
-	(void)isFinalAppend;
-}
-*/

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP_ResponseBuilder.cpp                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/20 10:48:39 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/02 00:53:21 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/06/04 06:21:06 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -143,8 +143,8 @@ void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 	// would otherwise be ignored. Apply it here once the location is known.
 	{
 		size_t loc_limit = _location.client_max_body_size > 0
-			? _location.client_max_body_size
-			: _serverConfig.client_max_body_size;
+							   ? _location.client_max_body_size
+							   : _serverConfig.client_max_body_size;
 		if (loc_limit > 0 && request.getBody().length() > loc_limit)
 		{
 			setResponse(response, HTTP_Status::CONTENT_TOO_LARGE);
@@ -166,8 +166,7 @@ void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 
 	_pathType = getPathType(_pathOnServer);
 
-	if ((_pathType == PATH_FILE || _pathType == PATH_NONE)
-		&& (method == HTTP_Method::GET || method == HTTP_Method::POST))
+	if ((_pathType == PATH_FILE || _pathType == PATH_NONE) && (method == HTTP_Method::GET || method == HTTP_Method::POST))
 	{
 		std::string ext = Utils::getExtension(_pathOnServer);
 		std::cout << "[DEBUG] Checking CGI for Path: " << _pathOnServer << std::endl;

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP_Request.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:46:32 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/02 00:51:16 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/06/04 16:48:26 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -90,7 +90,7 @@ HTTP_Request &HTTP_Request::operator=(const HTTP_Request &other)
 }
 
 /* getline removes the '\n' from each line it reads! */
-int HTTP_Request::parseHeaders(const char *raw, size_t len) // MO:SPLIT TO parseHeaders and setBody() -> AI: appendToBody() instead of setBody() ?
+int HTTP_Request::parseHeaders(const char *raw, size_t len)
 {
 	if (!len)
 	{
@@ -459,7 +459,7 @@ int HTTP_Request::_parseHeaderLine(std::string &line)
 HTTP_Headers HTTP_Request::_parseMultipartHeaders(const std::string &multipartHeadersStr)
 {
 	std::vector<std::string> lines = Utils::split(multipartHeadersStr, CRLF);
-	
+
 	HTTP_Headers multipartHeaders;
 	for (size_t i = 0; i < lines.size(); ++i)
 	{
@@ -532,9 +532,12 @@ int HTTP_Request::populateMultipartVars()
 	// parse headers
 	std::string headersStr = _body.substr(part_start, headers_end - part_start);
 	HTTP_Headers multipartHeaders;
-	try {
+	try
+	{
 		multipartHeaders = _parseMultipartHeaders(headersStr);
-	} catch (std::exception &e) {
+	}
+	catch (std::exception &e)
+	{
 		_parseStatus = HTTP_Request::BAD_REQUEST;
 		return (FAILURE);
 	}
@@ -552,18 +555,18 @@ int HTTP_Request::populateMultipartVars()
 	size_t content_start = headers_end + 4; // Skip \r\n\r\n
 
 	// find ending boundary
-	std::string end_delimiter = + "--" + _multipartBoundary + "--";
+	std::string end_delimiter = +"--" + _multipartBoundary + "--";
 	size_t content_end = _body.find(end_delimiter, content_start);
 	if (content_end == std::string::npos)
 		std::cout << "[DEBUG] ERROR: could not find ending boundary in multipart request body!" << std::endl;
 
 	if (content_end != std::string::npos)
 		_multipartData = _body.substr(content_start, content_end - content_start);
-	
+
 	// if the data ends with a CRLF, remove it
 	if (Utils::endsWith(_multipartData, CRLF))
 		_multipartData = _multipartData.erase(_multipartData.size() - 2);
-	
+
 	return (SUCCESS);
 }
 
@@ -743,12 +746,9 @@ void HTTP_Request::appendToBody(const std::string &data, size_t len, bool isFina
 	_body.append(data);
 	(void)len;
 
-	// CRITICAL for CGI: Keep the length variable in sync!
-	// _bodyLen = _body.length();
-
 	if (isFinalAppend)
 	{
 		_body_completed = true;
-		this->_parseStatus = HTTP_Request::COMPLETE; // AI: is this correct here?
+		this->_parseStatus = HTTP_Request::COMPLETE;
 	}
 }

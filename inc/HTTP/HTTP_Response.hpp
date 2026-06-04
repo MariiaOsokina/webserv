@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP_Response.hpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/26 19:27:57 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/06/04 09:02:35 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,6 @@
 #include "HTTP_Method.hpp"
 #include "HTTP_FieldName.hpp"
 #include "Utils.hpp"
-#include "CGI.hpp"
 
 class HTTP_Response
 {
@@ -50,10 +49,10 @@ public:
 	void serializeHeadersInto(std::string &out) const;
 	void setContent(const std::string &text);
 	void appendToContent(const std::string &data);
-	
+
 	void setHeadersOnly(const bool value);
 	bool isHeadersOnly();
-	
+
 	void setCGIGenerated(const bool value);
 	bool isCGIGenerated();
 	// O(1) ownership transfer of the body. Used during CGI output
@@ -67,14 +66,12 @@ public:
 	void reset();
 
 	void setCgiPath(const std::string &path);
-    std::string getCgiPath() const;
+	std::string getCgiPath() const;
 
-    void setScriptPath(const std::string &path);
-    std::string getScriptPath() const;
+	void setScriptPath(const std::string &path);
+	std::string getScriptPath() const;
 
 	void dumpToFile(const std::string &filename) const;
-
-	//void setBody(std::string &data, size_t len);
 
 	// friend is needed for the operator<< to be able to access
 	// the status and version private variables
@@ -84,7 +81,6 @@ protected:
 	// ...
 
 private:
-
 	HTTP_StatusPair _status;
 	std::string _version;
 
@@ -95,7 +91,7 @@ private:
 	std::string _body;
 
 	std::string _cgiPath;
-    std::string _scriptPath;
+	std::string _scriptPath;
 
 	void _init_class_vars();
 	void _set_class_vars(const HTTP_Response &other);

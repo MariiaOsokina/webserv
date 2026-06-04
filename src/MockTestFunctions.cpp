@@ -6,12 +6,11 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/11 12:49:30 by mosokina          #+#    #+#             */
-/*   Updated: 2026/04/07 20:39:06 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 16:47:44 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "WebServ.hpp"
-#include "Config.hpp"
+#include "MockTestFnctions.hpp"
 
 // FOR TESTING (runTemporaryTest() should be replaced by run() with poll() approach):
 void runTemporaryTest(WebServ &ws)

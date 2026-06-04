@@ -6,17 +6,16 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/25 11:32:29 by mosokina          #+#    #+#             */
-/*   Updated: 2026/05/29 16:36:30 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 16:47:58 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Utils.hpp"
 
-
-/* 
- * FD_CLOEXEC: Prevents File Descriptor "leaks" across processes. 
- * When a child process calls execve(), any FD with this flag is 
- * automatically closed, ensuring CGI scripts don't accidentally 
+/*
+ * FD_CLOEXEC: Prevents File Descriptor "leaks" across processes.
+ * When a child process calls execve(), any FD with this flag is
+ * automatically closed, ensuring CGI scripts don't accidentally
  * inherit open pipes or sockets belonging to other clients.
  * the door shut on every single fd that doesn't explicitly belong to that specific child.
  */
@@ -236,14 +235,16 @@ std::string Utils::removeQuote(const std::string &value, const char quote)
 	return (value);
 }
 
-std::size_t Utils::countOccurrence(const std::string &haystack, const std::string &needle) {
+std::size_t Utils::countOccurrence(const std::string &haystack, const std::string &needle)
+{
 	if (needle.empty())
 		return (0);
 
 	size_t occurrence = 0;
 	size_t pos = haystack.find(needle);
 
-	while (pos != std::string::npos) {
+	while (pos != std::string::npos)
+	{
 		++occurrence;
 		pos = haystack.find(needle, pos + needle.size());
 	}
@@ -366,7 +367,8 @@ std::string Utils::getNextAvailableFilename(const std::string &file_name_with_ex
 
 	std::string filename = file_dir + '/' + file_name + file_ext;
 
-	while (true) {
+	while (true)
+	{
 		if (!fileExists(filename))
 			break;
 
@@ -375,19 +377,19 @@ std::string Utils::getNextAvailableFilename(const std::string &file_name_with_ex
 		filename = ss.str();
 
 		++counter;
-    }
+	}
 
 	return (filename);
 }
 
 bool Utils::writeStringToFile(const std::string &filename_with_extension, const std::string &data)
 {
-    std::ofstream outfile(filename_with_extension.c_str(), std::ios::binary);
-    if (!outfile)
-        return (false);
+	std::ofstream outfile(filename_with_extension.c_str(), std::ios::binary);
+	if (!outfile)
+		return (false);
 
-    outfile.write(data.data(), data.size());
-    outfile.close();
+	outfile.write(data.data(), data.size());
+	outfile.close();
 	return (true);
 }
 
@@ -413,43 +415,56 @@ std::string Utils::dumpToFile(const std::string &filename, const std::string &da
 }
 
 // returns extension with the dot, ex: .txt
-std::string Utils::getExtension(const std::string& path) {
+std::string Utils::getExtension(const std::string &path)
+{
 	if (path.empty())
 		return ("");
 
 	size_t dot = path.find_last_of('.');
-    if (dot == std::string::npos || dot == path.length() - 1) {
-        return "";
-    }
-    return (path.substr(dot));
+	if (dot == std::string::npos || dot == path.length() - 1)
+	{
+		return "";
+	}
+	return (path.substr(dot));
 }
 
 /*Path operations*/
-std::string Utils::joinPath(const std::string& base, const std::string& relative) {
-    if (base.empty()) {
-        return (relative);
-    }
+std::string Utils::joinPath(const std::string &base, const std::string &relative)
+{
+	if (base.empty())
+	{
+		return (relative);
+	}
 
-    if (relative.empty()) {
-        return (base);
-    }
+	if (relative.empty())
+	{
+		return (base);
+	}
 
-    if (base[base.length() - 1] == '/') {
-        if (relative[0] == '/') {
-            return (base + relative.substr(1));
-        } else if (Utils::startsWith(relative, "./")) { // AI: fixed
+	if (base[base.length() - 1] == '/')
+	{
+		if (relative[0] == '/')
+		{
+			return (base + relative.substr(1));
+		}
+		else if (Utils::startsWith(relative, "./"))
+		{
 			return (base + relative.substr(2));
 		}
-        return (base + relative);
-    
-    } else {
-        if (relative[0] == '/') {
-            return (base + relative);
-        } else if (Utils::startsWith(relative, "./")) { // AI: fixed
+		return (base + relative);
+	}
+	else
+	{
+		if (relative[0] == '/')
+		{
+			return (base + relative);
+		}
+		else if (Utils::startsWith(relative, "./"))
+		{
 			return (base + "/" + relative.substr(2));
 		}
-        return (base + "/" + relative);
-    }
+		return (base + "/" + relative);
+	}
 }
 
 // will append the relative path to the current working directory
@@ -472,108 +487,124 @@ std::string Utils::getAbsolutePath(const std::string &relativePath)
 	return (relativePath);
 }
 
-std::string Utils::normalizePath(const std::string& path) {
-    std::vector<std::string> parts = split(path, '/');
-    std::vector<std::string> result;
+std::string Utils::normalizePath(const std::string &path)
+{
+	std::vector<std::string> parts = split(path, '/');
+	std::vector<std::string> result;
 
+	for (size_t i = 0; i < parts.size(); ++i)
+	{
+		if (parts[i] == "..")
+		{
+			if (!result.empty())
+			{
+				result.pop_back();
+			}
+		}
+		else if (parts[i] != ".")
+		{
+			result.push_back(parts[i]);
+		}
+	}
 
-    for (size_t i = 0; i < parts.size(); ++i) {
-        if (parts[i] == "..") {
-            if (!result.empty()) {
-                result.pop_back();
-            }
-        } else if (parts[i] != ".") {
-            result.push_back(parts[i]);
-        }
-    }
+	std::string normalized;
+	if (path[0] == '/')
+	{
+		normalized = "/";
+	}
+	for (size_t i = 0; i < result.size(); ++i)
+	{
+		if (i > 0)
+		{
+			normalized += "/";
+		}
+		normalized += result[i];
+	}
 
-    std::string normalized;
-    if (path[0] == '/') {
-        normalized = "/";
-    }
-    for (size_t i = 0; i < result.size(); ++i) {
-        if (i > 0) {
-            normalized += "/";
-        }
-        normalized += result[i];
-    }
-
-    return (normalized.empty() ? "/" : normalized);
+	return (normalized.empty() ? "/" : normalized);
 }
 
 // returns filename with extension, ex: test.jpg
-std::string Utils::getFileName(const std::string& path) {
-    size_t slash = path.find_last_of('/');
-    if (slash == std::string::npos) {
-        return (path);
-    }
-    
-    return (path.substr(slash + 1));
+std::string Utils::getFileName(const std::string &path)
+{
+	size_t slash = path.find_last_of('/');
+	if (slash == std::string::npos)
+	{
+		return (path);
+	}
+
+	return (path.substr(slash + 1));
 }
 
 // returns path, cutting off everything from the last '/'
 // example:
 // /path/to/file -> /path/to
 // /path/to/dir -> /path/to
-std::string Utils::getDirectory(const std::string& path) {
-    size_t slash = path.find_last_of('/');
-    if(slash == std::string::npos) {
-        return (".");
-    }
-    if (slash == 0) {
-        return ("/");
-    }
-    
-    return (path.substr(0, slash)); 
+std::string Utils::getDirectory(const std::string &path)
+{
+	size_t slash = path.find_last_of('/');
+	if (slash == std::string::npos)
+	{
+		return (".");
+	}
+	if (slash == 0)
+	{
+		return ("/");
+	}
+
+	return (path.substr(0, slash));
 }
 
 /*Mime types*/
-std::string Utils::getMimeType(const std::string& extension) {
-    std::string ext = toLowerCase(extension);
+std::string Utils::getMimeType(const std::string &extension)
+{
+	std::string ext = toLowerCase(extension);
 
-    if (ext == ".html" || ext == ".htm")
-        return ("text/html");
-    if (ext == ".css")
-        return ("text/css");
-    if (ext == ".js")
-        return ("application/javascript");
-    if (ext == ".json")
-        return ("application/json");
-    if (ext == ".xml")
-        return ("application/xml");
-    if (ext == ".jpg" || ext == ".jpeg")
-        return ("image/jpeg");
-    if (ext == ".png")
-        return ("image/png");
-    if (ext == ".gif")
-        return ("image/gif");
-    if (ext == ".svg")
-        return ("image/svg+xml");
-    if (ext == ".ico")
-        return ("image/x-icon");
-    if (ext == ".pdf")
-        return ("application/pdf");
-    if (ext == ".txt")
-        return ("text/plain");
-    if (ext == ".zip")
-        return ("application/zip");
-    if (ext == ".tar")
-        return ("application/x-tar");
-    if (ext == ".gz")
-        return ("application/gzip");
+	if (ext == ".html" || ext == ".htm")
+		return ("text/html");
+	if (ext == ".css")
+		return ("text/css");
+	if (ext == ".js")
+		return ("application/javascript");
+	if (ext == ".json")
+		return ("application/json");
+	if (ext == ".xml")
+		return ("application/xml");
+	if (ext == ".jpg" || ext == ".jpeg")
+		return ("image/jpeg");
+	if (ext == ".png")
+		return ("image/png");
+	if (ext == ".gif")
+		return ("image/gif");
+	if (ext == ".svg")
+		return ("image/svg+xml");
+	if (ext == ".ico")
+		return ("image/x-icon");
+	if (ext == ".pdf")
+		return ("application/pdf");
+	if (ext == ".txt")
+		return ("text/plain");
+	if (ext == ".zip")
+		return ("application/zip");
+	if (ext == ".tar")
+		return ("application/x-tar");
+	if (ext == ".gz")
+		return ("application/gzip");
 
-    return "application/octet-stream";
+	return "application/octet-stream";
 }
 
-std::string Utils::urlDecode(const std::string& input)
+std::string Utils::urlDecode(const std::string &input)
 {
 	std::string res;
 	if (input.size() < 3)
 		return (res = input);
 
-	for (size_t i = 0; i < input.length(); ++i) {
-        if (input[i] == '%' &&
-			isValidPercentEncoded(input, i)) {
+	for (size_t i = 0; i < input.length(); ++i)
+	{
+		if (input[i] == '%' &&
+			isValidPercentEncoded(input, i))
+		{
 
 			int value = 0;
 
@@ -583,42 +614,51 @@ std::string Utils::urlDecode(const std::string& input)
 
 			res += static_cast<char>(value);
 			i += 2;
-        } else if (input[i] == '+') {
-            res += ' ';
-        } else {
-            res += input[i];
-        }
-    }
+		}
+		else if (input[i] == '+')
+		{
+			res += ' ';
+		}
+		else
+		{
+			res += input[i];
+		}
+	}
 
-    return (res);
+	return (res);
 }
 
-std::string Utils::urlEncode(const std::string& str) {
-    std::ostringstream oss;
+std::string Utils::urlEncode(const std::string &str)
+{
+	std::ostringstream oss;
 
-    for (size_t i = 0; i < str.length(); ++i) {
-        char c = str[i];
-        if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
-            oss << c;
-        } else {
-            oss << '%'
+	for (size_t i = 0; i < str.length(); ++i)
+	{
+		char c = str[i];
+		if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~')
+		{
+			oss << c;
+		}
+		else
+		{
+			oss << '%'
 				<< std::uppercase << std::setw(2) << std::setfill('0')
 				<< std::hex << (int)(unsigned char)c
 				<< std::nouppercase;
-        }
+		}
 	}
-    return (oss.str());
+	return (oss.str());
 }
 
-bool Utils::isValidPercentEncoded(const std::string& str, size_t pos)
+bool Utils::isValidPercentEncoded(const std::string &str, size_t pos)
 {
 	if (pos + 2 >= str.length())
 		return (false);
 
 	char h1 = str[pos + 1];
 	char h2 = str[pos + 2];
-	return (std::isxdigit(static_cast<unsigned char>(h1)) && 
-		std::isxdigit(static_cast<unsigned char>(h2)));
+	return (std::isxdigit(static_cast<unsigned char>(h1)) &&
+			std::isxdigit(static_cast<unsigned char>(h2)));
 }
 
 bool Utils::isValidUriChar(char c)
@@ -632,26 +672,28 @@ bool Utils::isValidUriChar(char c)
 	return (allowed.find(c) != std::string::npos);
 }
 
-std::string Utils::toString(int n) {
-    std::ostringstream oss;
-    oss << n;
-    return (oss.str());
+std::string Utils::toString(int n)
+{
+	std::ostringstream oss;
+	oss << n;
+	return (oss.str());
 }
 
-std::string Utils::toString(size_t n) {
-    std::ostringstream oss;
-    oss << n;
-    return (oss.str());
+std::string Utils::toString(size_t n)
+{
+	std::ostringstream oss;
+	oss << n;
+	return (oss.str());
 }
 
 /*Time*/
-std::string Utils::getHttpDate() {
-    time_t now = time(NULL);
-    struct tm* gmt = gmtime(&now);
+std::string Utils::getHttpDate()
+{
+	time_t now = time(NULL);
+	struct tm *gmt = gmtime(&now);
 
-    char buffer[100];
-    strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", gmt);
+	char buffer[100];
+	strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", gmt);
 
-    return (std::string(buffer));
+	return (std::string(buffer));
 }
-
