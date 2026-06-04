@@ -18,3 +18,6 @@ request_cgi*
 response_cgi*
 
 .make_db
+
+compile_commands.json
+iwyu_output.txt
