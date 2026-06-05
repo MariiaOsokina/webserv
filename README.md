@@ -70,8 +70,23 @@ Manual test via a web browser (we used FireFox):
      browser tab, redirecting to a URL page, by a status code
      and a URL (ex. return 301 https://www.yahoo.com)
 
-   NOTE: we can notice .sh, .php and .py scripts being run on
+   NOTES:
+
+   1. we can notice .sh, .php and .py scripts being run on
    our server!
+
+   2. for the .php scripts to work, php-cgi needs to be installed;
+   if this needs installing, please run:
+
+      sudo apt install php-cgi
+
+   3. same goes for the .py scripts, and if python needs installing,
+   please run:
+
+      sudo apt install python3
+
+	  Then, have the right interpreter in the webserver .conf file,
+	  ex, some systems have python and others have python3, etc.
 
 Automated test, created by Maria, to test the web server's main
 core functionality:
