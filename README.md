@@ -88,6 +88,24 @@ Manual test via a web browser (we used FireFox):
 	  Then, have the right interpreter in the webserver .conf file,
 	  ex, some systems have python and others have python3, etc.
 
+Test a simple php only snake game in the browser, made by
+https://github.com/grisendo/snake-game-php
+
+   1. make snake_php
+
+      This will compile the webserv and clone the externa
+	  snake-game-php repository into www/snake
+
+   2. Open FireFox or Chrome and navigate to:
+
+      http://localhost:8080/snake/index.php
+
+	  Use alt + shift + {i,k,j,l} to change directions
+
+   This short game demonstrates .php is running from root (enabled
+   in the advanced.conf), and demonstrates the querystring is
+   functioning well in php.
+
 Automated test, created by Maria, to test the web server's main
 core functionality:
 
