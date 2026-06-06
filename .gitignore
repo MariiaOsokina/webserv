@@ -13,11 +13,9 @@ www_42tester/uploads/*
 file_dumps/*
 !file_dumps/.gitkeep
 
-# these are some debug filedumps of requests and responses the server receives
-request_cgi*
-response_cgi*
-
 .make_db
 
 compile_commands.json
 iwyu_output.txt
+
+www/snake
