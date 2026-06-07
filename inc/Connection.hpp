@@ -6,17 +6,17 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/11 12:49:22 by mosokina          #+#    #+#             */
-/*   Updated: 2026/06/04 18:26:55 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/06 20:48:19 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef CONNECTION_HPP
 #define CONNECTION_HPP
 
-#include "HTTP/HTTP.hpp"
-#include "HTTP/HTTP_Request.hpp"
-#include "HTTP/HTTP_Response.hpp"
-#include "HTTP/HTTP_ResponseBuilder.hpp"
+#include "HTTP.hpp"
+#include "HTTP_Request.hpp"
+#include "HTTP_Response.hpp"
+#include "HTTP_ResponseBuilder.hpp"
 #include "Listener.hpp"
 
 #include <unistd.h>	  // close

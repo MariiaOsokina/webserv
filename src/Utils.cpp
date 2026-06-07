@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/25 11:32:29 by mosokina          #+#    #+#             */
-/*   Updated: 2026/06/04 18:50:14 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/06 15:20:40 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,7 +86,7 @@ bool replace(std::string &str, const std::string &what, const std::string &with)
 	return true;
 }
 
-bool removeLastPortion(std::string &line, const std::string &portion)
+bool removeEndingPortion(std::string &line, const std::string &portion)
 {
 	if (line.empty() || portion.empty())
 		return (false);

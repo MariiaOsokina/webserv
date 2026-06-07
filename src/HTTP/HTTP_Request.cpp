@@ -6,17 +6,11 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:46:32 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/04 18:35:25 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/06 20:49:41 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "WebServMacros.hpp"
-#include "HTTP/HTTP_Defines.hpp"
-#include "HTTP/HTTP_Method.hpp"
-#include "HTTP/HTTP_Version.hpp"
-#include "HTTP/HTTP_FieldName.hpp"
-#include "HTTP/HTTP_Request.hpp"
-#include "Utils.hpp"
+#include "HTTP_Request.hpp"
 
 #include <cctype>
 #include <exception>
@@ -229,9 +223,24 @@ bool HTTP_Request::isMultipartRequest() const
 	return (_isMultipartRequest);
 }
 
-const std::string HTTP_Request::getMultipartBoundary() const
+const std::string &HTTP_Request::getMultipartBoundary() const
 {
 	return (_multipartBoundary);
+}
+
+const std::string &HTTP_Request::getMultipartFilename() const
+{
+	return (_multipartFilename);
+}
+
+const std::string &HTTP_Request::getMultipartContentType() const
+{
+	return (_multipartContentType);
+}
+
+const std::string &HTTP_Request::getMultipartData() const
+{
+	return (_multipartData);
 }
 
 void HTTP_Request::setParseStatus(const ParseStatus status)
@@ -277,7 +286,7 @@ int HTTP_Request::_parseRequestLine(std::string &line)
 	 *	getline removes '\n' (LF), so,
 	 *	only check and remove '\r' (CR).
 	 */
-	if (!removeLastPortion(line, CR))
+	if (!removeEndingPortion(line, CR))
 	{
 		_parseStatus = HTTP_Request::BAD_REQUEST;
 		return (FAILURE);
@@ -404,7 +413,7 @@ int HTTP_Request::_parseHeaderLine(std::string &line)
 	 *	getline removes '\n' (LF), so,
 	 *	only check and remove '\r' (CR).
 	 */
-	if (!removeLastPortion(line, CR))
+	if (!removeEndingPortion(line, CR))
 	{
 		_parseStatus = HTTP_Request::BAD_REQUEST;
 		return (FAILURE);

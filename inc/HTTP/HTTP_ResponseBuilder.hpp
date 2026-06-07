@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/20 10:48:39 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/04 18:57:07 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/06 20:48:48 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,9 +15,9 @@
 
 #include "Utils.hpp"
 #include "Config.hpp"
-#include "HTTP/HTTP_Status.hpp"
-#include "HTTP/HTTP_Request.hpp"
-#include "HTTP/HTTP_Response.hpp"
+#include "HTTP_Status.hpp"
+#include "HTTP_Request.hpp"
+#include "HTTP_Response.hpp"
 #include "ErrorPages.hpp"
 #include "DirectoriesToHTML.hpp"
 #include "CGI.hpp"

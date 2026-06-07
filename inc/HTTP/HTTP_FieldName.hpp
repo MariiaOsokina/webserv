@@ -6,14 +6,12 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/12 14:37:18 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/04 17:32:53 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/06 20:19:37 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef HTTP_FIELDNAME_HPP
 #define HTTP_FIELDNAME_HPP
-
-#include "HTTP_Defines.hpp"
 
 #include <string>
 

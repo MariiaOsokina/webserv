@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/26 23:56:58 by mosokina          #+#    #+#             */
-/*   Updated: 2026/06/04 18:28:39 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/06 15:20:25 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,7 +86,7 @@ typedef struct fsItem
 	fsItem() : size(0), isDir(false), isReadable(false) {}
 } fsItem;
 
-bool removeLastPortion(std::string &line, const std::string &portion);
+bool removeEndingPortion(std::string &line, const std::string &portion);
 
 PathType getPathType(const std::string &pathStr);
 

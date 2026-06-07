@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/14 19:03:57 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/04 18:29:21 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/06 21:04:09 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,8 +20,8 @@
 #define ESC_RED "\001\033[31m\002"
 #define ESC_END "\001\033[0m\002"
 
-#include "WebServMacros.hpp"
-#include "HTTP/HTTP.hpp"
+#include "HTTP.hpp"
+#include "Utils.hpp"
 #include "Config.hpp"
 #include "Listener.hpp"
 #include "Connection.hpp"
@@ -43,9 +43,6 @@
 #include <cstdio> // For sprintf used to frame chunked-encoding headers
 #include <ctime>
 #include <string>
-
-class Connection;
-struct ServerConfig;
 
 extern volatile sig_atomic_t g_server_running;
 

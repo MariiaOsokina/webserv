@@ -6,14 +6,14 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/25 08:52:13 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/04 18:27:18 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/06 20:48:29 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef ERROR_PAGES_HPP
 #define ERROR_PAGES_HPP
 
-#include "HTTP/HTTP_Status.hpp"
+#include "HTTP_Status.hpp"
 #include "Utils.hpp"
 #include "Config.hpp"
 

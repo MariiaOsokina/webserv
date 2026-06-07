@@ -6,21 +6,10 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/14 19:03:57 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/04 18:52:13 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/06 21:02:15 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "HTTP/HTTP_Defines.hpp"
-#include "HTTP/HTTP_Method.hpp"
-#include "HTTP/HTTP_Version.hpp"
-#include "HTTP/HTTP_Status.hpp"
-#include "HTTP/HTTP_FieldName.hpp"
-#include "HTTP/HTTP_Request.hpp"
-#include "HTTP/HTTP_Response.hpp"
-#include "Utils.hpp"
-#include "Config.hpp"
-#include "Connection.hpp"
-#include "CGI.hpp"
 #include "WebServ.hpp"
 
 #include <netinet/in.h>

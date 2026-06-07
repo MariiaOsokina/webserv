@@ -6,13 +6,14 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/04 18:18:39 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/06 20:48:35 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef HTTP_REQUEST_HPP
 #define HTTP_REQUEST_HPP
 
+#include "HTTP_Defines.hpp"
 #include "HTTP_Method.hpp"
 #include "HTTP_Version.hpp"
 #include "HTTP_Status.hpp"
@@ -58,7 +59,7 @@ public:
 		CONTENT_TOO_LARGE = 413,
 		REQUEST_HEADER_FIELDS_TOO_LARGE = 431,
 		NOT_IMPLEMENTED = 501,
-		HTTP_VERSION_NOT_SUPPORTED = 505,
+		HTTP_VERSION_NOT_SUPPORTED = 505
 	};
 
 	enum ParsingState
@@ -90,7 +91,10 @@ public:
 	std::string serialize() const;
 
 	bool isMultipartRequest() const;
-	const std::string getMultipartBoundary() const;
+	const std::string &getMultipartBoundary() const;
+	const std::string &getMultipartFilename() const;
+	const std::string &getMultipartContentType() const;
+	const std::string &getMultipartData() const;
 	int populateMultipartVars();
 
 	bool ready();
@@ -148,8 +152,7 @@ private:
 	std::string _extractFromValue(const std::string &prefix, const std::string &dataString);
 
 	// only if need access to private or protected elements
-	friend class HTTP;
-	friend class HTTP_ResponseBuilder; // FOR DEBUG ONLY!!! TO-DO: REMOVE!
+	// friend class HTTP;
 	friend std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr);
 };
 

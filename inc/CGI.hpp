@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/11 17:53:52 by aaladeok          #+#    #+#             */
-/*   Updated: 2026/06/04 18:26:11 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/06 20:48:10 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 #define CGI_HPP
 
 #include "Utils.hpp"
-#include "HTTP/HTTP_Request.hpp"
+#include "HTTP_Request.hpp"
 
 #include <sys/wait.h>
 #include <signal.h>

@@ -6,17 +6,17 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/20 10:48:39 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/04 18:38:20 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/06 20:49:54 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "WebServMacros.hpp"
-#include "HTTP/HTTP_Defines.hpp"
-#include "HTTP/HTTP_Method.hpp"
-#include "HTTP/HTTP_FieldName.hpp"
-#include "HTTP/HTTP_Request.hpp"
-#include "HTTP/HTTP_Response.hpp"
-#include "HTTP/HTTP_ResponseBuilder.hpp"
+#include "HTTP_Defines.hpp"
+#include "HTTP_Method.hpp"
+#include "HTTP_FieldName.hpp"
+#include "HTTP_Request.hpp"
+#include "HTTP_Response.hpp"
+#include "HTTP_ResponseBuilder.hpp"
 #include "DirectoriesToHTML.hpp"
 #include "ErrorPages.hpp"
 #include "CGI.hpp"
@@ -415,16 +415,16 @@ void HTTP_ResponseBuilder::build_response_for_POST(
 			return;
 		}
 
-		std::cout << "[DEBUG] Boundary: " << request._multipartBoundary << std::endl;
-		std::cout << "[DEBUG] Filename: " << request._multipartFilename << std::endl;
-		std::cout << "[DEBUG] Data start>>>" << request._multipartData << "<<<Data fin" << std::endl;
+		std::cout << "[DEBUG] Boundary: " << request.getMultipartBoundary() << std::endl;
+		std::cout << "[DEBUG] Filename: " << request.getMultipartFilename() << std::endl;
+		std::cout << "[DEBUG] Data start>>>" << request.getMultipartData() << "<<<Data fin" << std::endl;
 
-		filenameOnServer = Utils::joinPath(_location.upload_path, request._multipartFilename);
+		filenameOnServer = Utils::joinPath(_location.upload_path, request.getMultipartFilename());
 
 		if (filenameOnServer == _location.upload_path)
 			filenameOnServer = Utils::joinPath(_location.upload_path, DEFAULT_UPLOAD_FILENAME);
 
-		dataToWrite = request._multipartData;
+		dataToWrite = request.getMultipartData();
 	}
 
 	filenameOnServer = Utils::getNextAvailableFilename(filenameOnServer);
