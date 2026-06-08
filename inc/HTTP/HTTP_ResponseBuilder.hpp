@@ -6,16 +6,21 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/20 10:48:39 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/06 20:48:48 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/08 12:54:10 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef HTTP_RESPONSEBUILDER_HPP
 #define HTTP_RESPONSEBUILDER_HPP
 
+#include "WebServMacros.hpp"
+#include "DebugLogger.hpp"
 #include "Utils.hpp"
 #include "Config.hpp"
+#include "HTTP_Defines.hpp"
 #include "HTTP_Status.hpp"
+#include "HTTP_Method.hpp"
+#include "HTTP_FieldName.hpp"
 #include "HTTP_Request.hpp"
 #include "HTTP_Response.hpp"
 #include "ErrorPages.hpp"
@@ -68,6 +73,7 @@ private:
 	std::string _pathOnServer;
 	PathType _pathType;
 
+	// Private and Unimplemented to prevent copying
 	HTTP_ResponseBuilder(const HTTP_ResponseBuilder &other);
 	HTTP_ResponseBuilder &operator=(const HTTP_ResponseBuilder &other);
 

@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/11 17:53:52 by aaladeok          #+#    #+#             */
-/*   Updated: 2026/06/06 20:48:10 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/08 12:11:24 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -60,6 +60,11 @@ private:
 	std::string _scriptPath;
 	const HTTP_Request &_request;
 	std::map<std::string, std::string> _env;
+
+	// Rule of Three: Private and Unimplemented to prevent copying
+	CGILauncher();
+	CGILauncher(const CGILauncher &other);
+	CGILauncher &operator=(const CGILauncher &other);
 
 	void setupEnvironment(const std::string &script_name);
 	char **createEnvArray();

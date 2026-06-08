@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/11 17:53:52 by aaladeok          #+#    #+#             */
-/*   Updated: 2026/06/04 18:26:32 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/08 12:11:20 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,6 +86,10 @@ private:
 	std::vector<ServerConfig> _servers;
 	std::string _config_file;
 	int _current_line;
+
+	// Rule of Three: Private and Unimplemented to prevent copying
+	Config(const Config &other);
+	Config &operator=(const Config &other);
 
 	/*Parsing*/
 	void parseConfigFile(const std::string &filename);

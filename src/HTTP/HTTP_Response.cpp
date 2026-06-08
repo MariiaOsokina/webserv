@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/06 20:49:46 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/08 12:53:24 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -292,5 +292,5 @@ std::string HTTP_Response::getScriptPath() const
 void HTTP_Response::dumpToFile(const std::string &filename) const
 {
 	std::string filename_dumped_to = Utils::dumpToFile(filename, serialize());
-	std::cout << "[DEBUG] Response saved/dumped to " << filename_dumped_to << std::endl;
+	DebugLogger(std::cout)("[DEBUG] Response saved/dumped to ")(filename_dumped_to)('\n');
 }

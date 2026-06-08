@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/25 08:52:13 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/06 20:48:29 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/08 12:11:11 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,10 @@ public:
 
 private:
 	static std::string _template;
+
+	// Rule of Three: Private and Unimplemented to prevent copying
+	ErrorPages(const ErrorPages &other);
+	ErrorPages &operator=(const ErrorPages &other);
 };
 
 #endif // ERROR_PAGES_HPP

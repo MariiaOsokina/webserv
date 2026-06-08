@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:46:32 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/06 20:49:41 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/08 12:53:26 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -277,7 +277,7 @@ bool HTTP_Request::hasHeader(const std::string &fieldName) const
 void HTTP_Request::dumpToFile(const std::string &filename) const
 {
 	std::string filename_dumped_to = Utils::dumpToFile(filename, serialize());
-	std::cout << "[DEBUG] Request saved/dumped to " << filename_dumped_to << std::endl;
+	DebugLogger(std::cout)("[DEBUG] Request saved/dumped to ")(filename_dumped_to)('\n');
 }
 
 int HTTP_Request::_parseRequestLine(std::string &line)
@@ -580,7 +580,7 @@ int HTTP_Request::populateMultipartVars()
 	std::string end_delimiter = +"--" + _multipartBoundary + "--";
 	size_t content_end = _body.find(end_delimiter, content_start);
 	if (content_end == std::string::npos)
-		std::cout << "[DEBUG] ERROR: could not find ending boundary in multipart request body!" << std::endl;
+		DebugLogger(std::cout)("[DEBUG] ERROR: could not find ending boundary in multipart request body!\n");
 
 	if (content_end != std::string::npos)
 		_multipartData = _body.substr(content_start, content_end - content_start);
@@ -696,17 +696,13 @@ void HTTP_Request::reset()
 
 std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr)
 {
+#if defined(DEBUG) && DEBUG == 1
 	if (hr._headers.size() == 0 && hr._body.size() == 0)
 	{
 		os << "Empty HTTP_Request object! (was just initialized or all states were reset)" << std::endl;
 		return (os);
 	}
-
-	if (DEBUG_MODE && !hr._requestLine_completed)
-	{
-		os << "[DEBUG] HTTP_Request - incomplete header line";
-		return (os);
-	}
+#endif
 
 	std::string line_start = "";
 	std::string line_ending = CRLF;
@@ -719,12 +715,6 @@ std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr)
 	os << line_start << hr._method << " " << hr._url << " " << hr._version;
 	os << line_ending;
 
-	if (DEBUG_MODE && !hr._headers_completed)
-	{
-		os << "[DEBUG] HTTP_Request - incomplete headers";
-		return (os);
-	}
-
 	HTTP_Headers::const_iterator it;
 	for (it = hr._headers.begin(); it != hr._headers.end(); ++it)
 	{
@@ -735,16 +725,6 @@ std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr)
 	}
 
 	os << line_start << line_ending;
-
-	if (DEBUG_MODE && !hr._body_completed)
-	{
-		if (!hr.hasHeader(HTTP_FieldName::TRANSFER_ENCODING) &&
-			!hr.hasHeader(HTTP_FieldName::CONTENT_LENGTH))
-			os << "[DEGUB] HTTP_Request is headers only (has no body)!";
-		else
-			os << "[DEBUG] HTTP_Request - incomplete body";
-		return (os);
-	}
 
 	if (hr._body.size() > 0)
 		os << line_start;

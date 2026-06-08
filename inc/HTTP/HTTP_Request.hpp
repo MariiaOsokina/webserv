@@ -6,13 +6,14 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/06 20:48:35 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/08 12:54:31 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef HTTP_REQUEST_HPP
 #define HTTP_REQUEST_HPP
 
+#include "DebugLogger.hpp"
 #include "HTTP_Defines.hpp"
 #include "HTTP_Method.hpp"
 #include "HTTP_Version.hpp"
