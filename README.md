@@ -21,6 +21,40 @@ The main goals of this project were, to:
 To see the result of our work in action, see the below suggested options.
 Note: use CTRL + C at any time to shut down the server gracefully!
 
+IMPORTANT, for testing that the CGI is executing correctly, php-cgi and
+python need to be installed on the system:
+
+   1. for the .php scripts to work, php-cgi needs to be present;
+      if this needs installing, please run:
+
+      For Ubuntu:
+      sudo apt update && sudo apt install php-cgi
+
+      For MacOS:
+	  brew update && brew install php
+
+	  And verify if the php-cgi has installed by:
+	  php-cgi -v
+
+   2. same goes for the .py scripts, and if python needs installing,
+      please run:
+
+      For Ubuntu:
+      sudo apt update && sudo apt install python3
+
+	  For MacOS:
+	  brew update && brew install python
+
+   3. Then, have the right interpreters in the webserver .conf file,
+	  ex, some systems have python and others have python3, etc. To
+	  see which one is present on your system, use:
+
+	  which python
+
+	  or
+
+	  which python3
+
 Manual test via a web browser (we used FireFox):
 
 1. make and then run the web server:
@@ -70,23 +104,7 @@ Manual test via a web browser (we used FireFox):
      browser tab, redirecting to a URL page, by a status code
      and a URL (ex. return 301 https://www.yahoo.com)
 
-   NOTES:
-
-   1. we can notice .sh, .php and .py scripts being run on
-   our server!
-
-   2. for the .php scripts to work, php-cgi needs to be installed;
-   if this needs installing, please run:
-
-      sudo apt install php-cgi
-
-   3. same goes for the .py scripts, and if python needs installing,
-   please run:
-
-      sudo apt install python3
-
-	  Then, have the right interpreter in the webserver .conf file,
-	  ex, some systems have python and others have python3, etc.
+   NOTE: we can notice .sh, .php and .py scripts being run on our server!
 
 Test a simple php only snake game in the browser, made by
 https://github.com/grisendo/snake-game-php
