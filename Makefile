@@ -6,7 +6,7 @@
 #    By: aistok <aistok@student.42london.com>       +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/01/14 18:42:19 by aistok            #+#    #+#              #
-#    Updated: 2026/06/06 23:15:45 by aistok           ###   ########.fr        #
+#    Updated: 2026/06/08 12:56:43 by aistok           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -18,8 +18,9 @@ CFLAGS		:=	$(CFLAGS) @clang++includes.txt
 #				like <iostream> etc @clang++includes.txt is needed
 CFLAGS		:=	$(CFLAGS) -MMD -MP # used for automatic dependency checking
 
-#DFLAGS		:=	-g3 -O0
-#DFLAGS		:=	-fsanitise=address
+#DFLAGS		:=	-DDEBUG_MODE=1
+#DFLAGS		:=	$(DFLAGS) -g3 -O0
+#DFLAGS		:=	$(DFLAGS) -fsanitise=address
 
 RM			:=	rm -rf
 SHELL		:=	/usr/bin/bash
@@ -41,18 +42,6 @@ OBJ_DIR		:=	./obj
 BIN_DIR		:=	./bin
 
 NAME		:=	$(BIN_DIR)/webserv
-
-# TO GET THE ALL SOURCE FILES (TEMPORARILY), UNTIL THE PROJECT BECOMES MORE STABLE
-#TMP_SRC_DIRS	:= $(shell find $(SRC_DIR) -type d)
-#TMP_OBJ_DIRS	:= $(subst $(SRC_DIR),$(OBJ_DIR),$(TMP_SRC_DIRS))
-#TMP_SRC_FILES	:= $(wildcard $(addsuffix /*, $(TMP_SRC_DIRS)))
-#INC_FILES		:= $(shell find $(INC_DIR) -name "*.hpp")
-#SRC_FILES		:= $(filter %.cpp, $(TMP_SRC_FILES))
-
-# COMMENTED UNTIL CLOSE TO THE FINAL STAGES
-#SRC_DIRS	:=	$(TMP_SRC_DIRS)
-#OBJ_DIRS	:=	$(TMP_OBJ_DIRS)
-# INC_FILES	:=	$(INC_DIR)/WebServ.hpp
 
 SRC_DIRS	:=	$(SRC_DIR) $(SRC_DIR)/HTTP
 OBJ_DIRS	:=	$(subst $(SRC_DIR),$(OBJ_DIR),$(SRC_DIRS))
@@ -76,6 +65,7 @@ SRC_FILES	:=	$(SRC_DIR)/CGI.cpp \
 				$(SRC_DIR)/HTTP/HTTP_Response.cpp \
 				$(SRC_DIR)/HTTP/HTTP_Status.cpp \
 				$(SRC_DIR)/HTTP/HTTP_Version.cpp \
+				$(SRC_DIR)/DebugLogger.cpp \
 				$(SRC_DIR)/main.cpp
 
 OBJ_FILES	:=	$(subst $(SRC_DIR)/,$(OBJ_DIR)/,$(SRC_FILES:%.cpp=%.o))
@@ -121,23 +111,6 @@ $(OBJ_DIR) $(BIN_DIR) $(MAKE_DB):
 
 $(DELETE_TEST_DIR): | $(MAKE_DB)
 	@$(call fancylog,Creating,created,$@,./tests/prep_www_for_delete_testing.sh)
-
-# this is for Makefile debug only
-test:
-	@echo CFLAGS:
-	@echo $(CFLAGS)
-	@echo SRC_DIRS:
-	@echo $(SRC_DIRS)
-	@echo SRC_FILES:
-	@echo $(SRC_FILES)
-	@echo OBJ_DIRS:
-	@echo $(OBJ_DIRS)
-	@echo OBJ_FILES:
-	@echo $(OBJ_FILES)
-	@echo INC_DIRS:
-	@echo $(INC_DIRS)
-	@echo INC_DIRS_FLAGS:
-	@echo $(INC_DIRS_FLAGS)
 
 run: all
 	@echo
@@ -221,7 +194,6 @@ siege-very-hard: all
 re: fclean all
 
 .PHONY: all clean fclean re \
-		test \
 		runtests core_tests \
 		set_executables \
 		run \
