@@ -6,17 +6,20 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/25 08:52:13 by aistok            #+#    #+#             */
-/*   Updated: 2026/04/02 07:56:35 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/08 12:11:11 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef ERROR_PAGES_HPP
 #define ERROR_PAGES_HPP
 
-#include <string>
+#include "HTTP_Status.hpp"
 #include "Utils.hpp"
-#include "HTTP/HTTP_Status.hpp"
 #include "Config.hpp"
+
+#include <string>
+
+struct ServerConfig;
 
 class ErrorPages
 {
@@ -29,6 +32,10 @@ public:
 
 private:
 	static std::string _template;
+
+	// Rule of Three: Private and Unimplemented to prevent copying
+	ErrorPages(const ErrorPages &other);
+	ErrorPages &operator=(const ErrorPages &other);
 };
 
 #endif // ERROR_PAGES_HPP

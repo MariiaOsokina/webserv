@@ -6,27 +6,34 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:34:38 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/29 18:02:16 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/08 12:54:31 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef HTTP_REQUEST_HPP
 #define HTTP_REQUEST_HPP
 
-#include <iostream>
-#include <map>
-#include <strings.h> // For strcasecmp
-#include <sstream> // stringbuf
-#include <istream> // istream
-
+#include "DebugLogger.hpp"
+#include "HTTP_Defines.hpp"
+#include "HTTP_Method.hpp"
 #include "HTTP_Version.hpp"
 #include "HTTP_Status.hpp"
-#include "HTTP_Method.hpp"
 #include "HTTP_FieldName.hpp"
 #include "Utils.hpp"
 
-struct CaseInsensitiveCompare {
-	bool operator()(const std::string& a, const std::string& b) const {
+#include <strings.h> // For strcasecmp
+#include <stddef.h>
+
+#include <iostream>
+#include <map>
+#include <sstream> // stringbuf
+#include <istream> // istream
+#include <string>
+
+struct CaseInsensitiveCompare
+{
+	bool operator()(const std::string &a, const std::string &b) const
+	{
 		// strcasecmp returns 0 if strings are equal (ignoring case)
 		// std::map needs a "less than" comparison, so we return true if a < b
 		return strcasecmp(a.c_str(), b.c_str()) < 0;
@@ -53,18 +60,17 @@ public:
 		CONTENT_TOO_LARGE = 413,
 		REQUEST_HEADER_FIELDS_TOO_LARGE = 431,
 		NOT_IMPLEMENTED = 501,
-		HTTP_VERSION_NOT_SUPPORTED = 505,
+		HTTP_VERSION_NOT_SUPPORTED = 505
 	};
 
 	enum ParsingState
 	{
 		STATE_REQUEST_LINE, // Parsing: GET /index.html HTTP/1.1
-		STATE_HEADERS,      // Parsing: Host: localhost...
-		STATE_BODY,         // Parsing: Binary data or form data
-		STATE_COMPLETE,     // Entire request is ready
-		STATE_ERROR         // Something went wrong (e.g., 400 Bad Request)
+		STATE_HEADERS,		// Parsing: Host: localhost...
+		STATE_BODY,			// Parsing: Binary data or form data
+		STATE_COMPLETE,		// Entire request is ready
+		STATE_ERROR			// Something went wrong (e.g., 400 Bad Request)
 	};
-
 
 	int parseHeaders(const char *raw, size_t len);
 	void setBody(const std::string &data, size_t len);
@@ -84,9 +90,12 @@ public:
 	// not need the body anymore.
 	void swapBody(std::string &dst);
 	std::string serialize() const;
-	
+
 	bool isMultipartRequest() const;
-	const std::string getMultipartBoundary() const;
+	const std::string &getMultipartBoundary() const;
+	const std::string &getMultipartFilename() const;
+	const std::string &getMultipartContentType() const;
+	const std::string &getMultipartData() const;
 	int populateMultipartVars();
 
 	bool ready();
@@ -106,14 +115,14 @@ private:
 	std::string _version;
 	bool _requestLine_completed;
 
-	/* * RFC 9110 Compliance: HTTP header names are case-insensitive. 
-	* Using CaseInsensitiveCompare ensures that "Content-Type" and "content-type" 
-	* are treated as the same key, preventing duplicate entries and lookup failures.
-	*/
+	/* * RFC 9110 Compliance: HTTP header names are case-insensitive.
+	 * Using CaseInsensitiveCompare ensures that "Content-Type" and "content-type"
+	 * are treated as the same key, preventing duplicate entries and lookup failures.
+	 */
 	HTTP_Headers _headers;
 	bool _headers_completed;
 	int _headersRequiredCount;
-	
+
 	bool _isMultipartRequest;
 	std::string _multipartBoundary;
 	std::string _multipartFilename;
@@ -144,11 +153,10 @@ private:
 	std::string _extractFromValue(const std::string &prefix, const std::string &dataString);
 
 	// only if need access to private or protected elements
-	friend class HTTP;
-	friend class HTTP_ResponseBuilder; // FOR DEBUG ONLY!!! TO-DO: REMOVE!
+	// friend class HTTP;
 	friend std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr);
 };
 
-//std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr);
+// std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr);
 
 #endif // HTTP_REQUEST_HPP

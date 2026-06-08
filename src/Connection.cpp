@@ -3,24 +3,37 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/11 12:49:10 by mosokina          #+#    #+#             */
-/*   Updated: 2026/06/01 23:49:48 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/06/04 18:44:15 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "HTTP/HTTP.hpp"
 #include "Connection.hpp"
+#include "Listener.hpp"
 
-Connection::Connection(int fd, Listener *listener): _state(READING_HEADERS),
-												_connectFd(fd),
-												_listener(listener),
-												_streamFinished(false),
-												_streamDrained(false),
-												_streamAborted(false),
-												_expectedBodySize(0),
-												_isChunked(false),
-												_responseBuilder(listener->getConfig())
+#include <strings.h>
+#include <sys/socket.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+#include <iostream>
+#include <map>
+#include <cctype>
+#include <cstdlib>
+#include <ctime>
+
+Connection::Connection(int fd, Listener *listener) : _state(READING_HEADERS),
+													 _connectFd(fd),
+													 _listener(listener),
+													 _streamFinished(false),
+													 _streamDrained(false),
+													 _streamAborted(false),
+													 _expectedBodySize(0),
+													 _isChunked(false),
+													 _responseBuilder(listener->getConfig())
 {
 	_lastActive = std::time(NULL);
 	_cgi_pid = -1; // -1 means no CGI process is currently running
@@ -29,20 +42,22 @@ Connection::Connection(int fd, Listener *listener): _state(READING_HEADERS),
 
 Connection::~Connection()
 {
-    // 1. Close the client socket
-    if (_connectFd != -1) {
-        close(_connectFd);
-        _connectFd = -1;
-    }
+	// 1. Close the client socket
+	if (_connectFd != -1)
+	{
+		close(_connectFd);
+		_connectFd = -1;
+	}
 
-    // 2. Clean up any rogue CGI processes
-    if (_cgi_pid > 0) {
-        // Send a kill signal to force the child to stop immediately
-        kill(_cgi_pid, SIGKILL); 
-        
-        // Tell the OS to reap the zombie and delete its record.
-        waitpid(_cgi_pid, NULL, 0); 
-    }
+	// 2. Clean up any rogue CGI processes
+	if (_cgi_pid > 0)
+	{
+		// Send a kill signal to force the child to stop immediately
+		kill(_cgi_pid, SIGKILL);
+
+		// Tell the OS to reap the zombie and delete its record.
+		waitpid(_cgi_pid, NULL, 0);
+	}
 }
 
 void Connection::resetForNextRequest()
@@ -62,7 +77,8 @@ void Connection::resetForNextRequest()
 	_expectedBodySize = 0;
 	_cgi_pid = -1;
 	// Log for debugging:
-	if (!_rawRequest.empty()) {
+	if (!_rawRequest.empty())
+	{
 		std::cout << "[WebServ] Pipelined data remaining in buffer: "
 				  << _rawRequest.size() << " bytes." << std::endl;
 	}
@@ -99,12 +115,12 @@ int Connection::getState() const
 
 void Connection::setState(ConnectionState state)
 {
-    _state = state;
+	_state = state;
 }
 
 void Connection::setCgiPid(pid_t pid)
 {
-    _cgi_pid = pid;
+	_cgi_pid = pid;
 }
 
 void Connection::handleRead(const char *buffer, ssize_t bytesRead)
@@ -118,15 +134,17 @@ void Connection::handleRead(const char *buffer, ssize_t bytesRead)
 			_request.setParseStatus(HTTP_Request::REQUEST_HEADER_FIELDS_TOO_LARGE);
 			return;
 		}
-		_rawRequest.append(buffer, bytesRead);        
+		_rawRequest.append(buffer, bytesRead);
 	}
 	if (_state == READING_HEADERS)
 	{
 		size_t pos = _rawRequest.find(DBL_CRLF);
-		if (pos != std::string::npos) {
+		if (pos != std::string::npos)
+		{
 			std::string headerString = _rawRequest.substr(0, pos + 4);
-			
-			if (_request.parseHeaders(headerString.c_str(), headerString.size()) == FAILURE) {
+
+			if (_request.parseHeaders(headerString.c_str(), headerString.size()) == FAILURE)
+			{
 				_state = ERROR;
 				return;
 			}
@@ -137,7 +155,8 @@ void Connection::handleRead(const char *buffer, ssize_t bytesRead)
 		}
 	}
 
-	if (_state == READING_BODY) {
+	if (_state == READING_BODY)
+	{
 		if (_isChunked)
 			_handleChunkedBody();
 		else
@@ -145,7 +164,7 @@ void Connection::handleRead(const char *buffer, ssize_t bytesRead)
 	}
 }
 
-bool Connection::handleWrite() //bool is finised
+bool Connection::handleWrite() // bool is finised
 {
 	// --- Streaming path: source bytes from _streamBuf, erase-from-front ---
 	// The buffer is small (bounded by CGI_FORWARD_HIGH_WATER) so the
@@ -186,21 +205,22 @@ bool Connection::handleWrite() //bool is finised
 	if (_rawResponse.empty())
 		return true; // //MO: check case, Nothing to send
 
-	const char* dataPtr = _rawResponse.c_str() + _bytesSent;
+	const char *dataPtr = _rawResponse.c_str() + _bytesSent;
 	size_t remaining = _rawResponse.size() - _bytesSent;
 
 	ssize_t sent = send(_connectFd, dataPtr, remaining, 0);
 
 	// RULE: No errno check. If sent is -1 (error) or 0 (failed to move any bytes/closed)
-    if (sent <= 0)
-    {
-        _state = ERROR;
-        return true;
-    }
+	if (sent <= 0)
+	{
+		_state = ERROR;
+		return true;
+	}
 
 	_bytesSent += sent;
-	this->resetTimeout(); //MO: find proper place for this line
-	if (_bytesSent >= _rawResponse.size()) {
+	this->resetTimeout(); // MO: find proper place for this line
+	if (_bytesSent >= _rawResponse.size())
+	{
 		return true;
 	}
 	return false;
@@ -208,29 +228,33 @@ bool Connection::handleWrite() //bool is finised
 
 bool Connection::shouldClose() const
 {
-	if (_state == ERROR) return true;
+	if (_state == ERROR)
+		return true;
 	// MO: HANDLE OTHER ERRORS
 	if (_request.getParseStatus() == HTTP_Request::BAD_REQUEST)
 		return true;
 
-	const std::map<std::string, std::string, CaseInsensitiveCompare>& headers = _request.getHeaders();
+	const std::map<std::string, std::string, CaseInsensitiveCompare> &headers = _request.getHeaders();
 	std::string version = _request.getVersion();
 
 	// Find the 'Connection' header
 	std::string connHeader = "";
 	std::map<std::string, std::string, CaseInsensitiveCompare>::const_iterator it = headers.find("Connection");
-		if (it != headers.end()) {
-			connHeader = it->second; // C++98 safe!
-			for (size_t i = 0; i < connHeader.length(); ++i)
-				connHeader[i] = std::tolower(connHeader[i]);
-		}
+	if (it != headers.end())
+	{
+		connHeader = it->second; // C++98 safe!
+		for (size_t i = 0; i < connHeader.length(); ++i)
+			connHeader[i] = std::tolower(connHeader[i]);
+	}
 	// 1. HTTP/1.1 Logic: Persistent by default
-	if (version == HTTP_Version::v1_1) {
+	if (version == HTTP_Version::v1_1)
+	{
 		return (connHeader == "close");
 	}
 
 	// 2. HTTP/1.0 Logic: Close by default
-	if (version == HTTP_Version::v1_0) {
+	if (version == HTTP_Version::v1_0)
+	{
 		return (connHeader != "keep-alive");
 	}
 
@@ -239,7 +263,7 @@ bool Connection::shouldClose() const
 
 void Connection::prepareResponse()
 {
-	_responseBuilder.build(_response, _request); //MO: CGI starts here!!
+	_responseBuilder.build(_response, _request); // MO: CGI starts here!!
 	// Build wire bytes directly into _rawResponse. Avoids the
 	// ostringstream double-copy of serialize() that peaked at ~3x the
 	// body and OOM-killed the server under concurrent 100 MB uploads.
@@ -263,57 +287,58 @@ void Connection::forceTimeoutError()
 
 void Connection::_setupBodyReading()
 {
-    const std::map<std::string, std::string, CaseInsensitiveCompare>& h = _request.getHeaders();
-    std::map<std::string, std::string, CaseInsensitiveCompare>::const_iterator itTE = h.find("Transfer-Encoding");
-    std::map<std::string, std::string, CaseInsensitiveCompare>::const_iterator itCL = h.find("Content-Length");
-    
-    // 1. RFC 9112: Priority & Smuggling Check
-    // If both are present, we must reject it.
-    if (itTE != h.end() && itCL != h.end())
-    {
-        std::cout << "[Security] Smuggling attempt: both CL and TE present." << std::endl;
-        _request.setParseStatus(HTTP_Request::BAD_REQUEST);
-        _state = ERROR;
-        return;
-    }
+	const std::map<std::string, std::string, CaseInsensitiveCompare> &h = _request.getHeaders();
+	std::map<std::string, std::string, CaseInsensitiveCompare>::const_iterator itTE = h.find("Transfer-Encoding");
+	std::map<std::string, std::string, CaseInsensitiveCompare>::const_iterator itCL = h.find("Content-Length");
 
-    // 2. Handle Transfer-Encoding
-    if (itTE != h.end())
-    {
-        // We ONLY support 'chunked'. (Using strcasecmp because HTTP values are case-insensitive)
-        if (strcasecmp(itTE->second.c_str(), "chunked") == 0)
-        {
-            _isChunked = true;
-            _state = READING_BODY;
-        }
-        else
-        {
-            std::cout << "[WebServ] Unsupported TE: " << itTE->second << std::endl;
-            _request.setParseStatus(HTTP_Request::BAD_REQUEST); //or 501 (Not Implemented)
-            _state = ERROR;
-        }
-        return;
-    }
-    // 3. Handle Content-Length
-    if (itCL != h.end())
-    {
-        _expectedBodySize = std::strtoul(itCL->second.c_str(), NULL, 10);
-        // Headers are parsed, so we can resolve the matching location
-        // here and apply its client_max_body_size (falling back to the
-        // server-level value). Otherwise a location that overrides the
-        // server with a larger limit would be silently capped.
-        size_t maxBodySize = HTTP::ResponseBuilder::resolveBodyLimit(_listener->getConfig(), _request);
-        if (maxBodySize > 0 && _expectedBodySize > maxBodySize) {
-            std::cout << "[WebServ] Payload too large (Content-Length): " << _expectedBodySize << std::endl;
-            _request.setParseStatus(HTTP_Request::CONTENT_TOO_LARGE);
-            _state = ERROR;
-            return;
-        }
+	// 1. RFC 9112: Priority & Smuggling Check
+	// If both are present, we must reject it.
+	if (itTE != h.end() && itCL != h.end())
+	{
+		std::cout << "[Security] Smuggling attempt: both CL and TE present." << std::endl;
+		_request.setParseStatus(HTTP_Request::BAD_REQUEST);
+		_state = ERROR;
+		return;
+	}
 
-        _state = (_expectedBodySize > 0) ? READING_BODY : REQUEST_READY;
-    }
-    else 
-        _state = REQUEST_READY; // No TE and no CL means no body.
+	// 2. Handle Transfer-Encoding
+	if (itTE != h.end())
+	{
+		// We ONLY support 'chunked'. (Using strcasecmp because HTTP values are case-insensitive)
+		if (strcasecmp(itTE->second.c_str(), "chunked") == 0)
+		{
+			_isChunked = true;
+			_state = READING_BODY;
+		}
+		else
+		{
+			std::cout << "[WebServ] Unsupported TE: " << itTE->second << std::endl;
+			_request.setParseStatus(HTTP_Request::BAD_REQUEST); // or 501 (Not Implemented)
+			_state = ERROR;
+		}
+		return;
+	}
+	// 3. Handle Content-Length
+	if (itCL != h.end())
+	{
+		_expectedBodySize = std::strtoul(itCL->second.c_str(), NULL, 10);
+		// Headers are parsed, so we can resolve the matching location
+		// here and apply its client_max_body_size (falling back to the
+		// server-level value). Otherwise a location that overrides the
+		// server with a larger limit would be silently capped.
+		size_t maxBodySize = HTTP::ResponseBuilder::resolveBodyLimit(_listener->getConfig(), _request);
+		if (maxBodySize > 0 && _expectedBodySize > maxBodySize)
+		{
+			std::cout << "[WebServ] Payload too large (Content-Length): " << _expectedBodySize << std::endl;
+			_request.setParseStatus(HTTP_Request::CONTENT_TOO_LARGE);
+			_state = ERROR;
+			return;
+		}
+
+		_state = (_expectedBodySize > 0) ? READING_BODY : REQUEST_READY;
+	}
+	else
+		_state = REQUEST_READY; // No TE and no CL means no body.
 }
 
 bool Connection::hasBufferedData() const
@@ -333,36 +358,40 @@ std::string Connection::getRawResponse() const
 
 void Connection::_handleStandardBody()
 {
-    size_t available = _rawRequest.size();
-    size_t needed = _expectedBodySize - _request.getBody().length();
-    size_t toMove = std::min(available, needed);
+	size_t available = _rawRequest.size();
+	size_t needed = _expectedBodySize - _request.getBody().length();
+	size_t toMove = std::min(available, needed);
 
-    if (toMove > 0) {
-        // Move data from the raw buffer to the Request object
+	if (toMove > 0)
+	{
+		// Move data from the raw buffer to the Request object
 		//_request.setBody(_rawRequest.substr(0, toMove), toMove);
-        _request.appendToBody(_rawRequest.substr(0, toMove), toMove, _request.getBody().length() >= _expectedBodySize); // AI: updated with _request.getBody().length() >= _expectedBodySize
-        _rawRequest.erase(0, toMove); // Remove it from the socket buffer
-        
-    }
-    // CRITICAL: Only set to REQUEST_READY if we actually have all the bytes!
-    if (_request.getBody().length() >= _expectedBodySize) {
-        _state = REQUEST_READY;
-    }
+		_request.appendToBody(_rawRequest.substr(0, toMove), toMove, _request.getBody().length() >= _expectedBodySize);
+		_rawRequest.erase(0, toMove); // Remove it from the socket buffer
+	}
+	// CRITICAL: Only set to REQUEST_READY if we actually have all the bytes!
+	if (_request.getBody().length() >= _expectedBodySize)
+	{
+		_state = REQUEST_READY;
+	}
 }
 
-void Connection::_handleChunkedBody() {
+void Connection::_handleChunkedBody()
+{
 	while (true)
 	{
 		size_t pos = _rawRequest.find(CRLF);
-		if (pos == std::string::npos) return; // Wait for more data
+		if (pos == std::string::npos)
+			return; // Wait for more data
 
 		// 1. Extract hex size, ignoring any chunk extensions (e.g., "5;ext=val")
 		std::string hexLine = _rawRequest.substr(0, pos);
 		size_t semiPos = hexLine.find(';');
 		std::string hexStr = (semiPos != std::string::npos) ? hexLine.substr(0, semiPos) : hexLine;
-		
+
 		// Validation check
-		if (!_isValidHex(hexStr)) {
+		if (!_isValidHex(hexStr))
+		{
 			std::cout << "[WebServ] Invalid chunk size format" << std::endl;
 			_request.setParseStatus(HTTP_Request::BAD_REQUEST);
 			_state = ERROR;
@@ -370,17 +399,18 @@ void Connection::_handleChunkedBody() {
 		}
 
 		size_t chunkSize = std::strtoul(hexStr.c_str(), NULL, 16);
-		
+
 		// 2. Terminal Chunk Handling (0\r\n\r\n)
-		if (chunkSize == 0) {
+		if (chunkSize == 0)
+		{
 			// Search for the end of the entire chunked message (handles trailing headers)
 			size_t endPos = _rawRequest.find(DBL_CRLF, pos);
-			if (endPos == std::string::npos) return; // Wait for the final CRLF
+			if (endPos == std::string::npos)
+				return; // Wait for the final CRLF
 
-			//_request.setBody(_chunkedAccumulator.c_str(), _chunkedAccumulator.size()); // AI: changed setBody(...) to appendToBody(...)
 			_request.appendToBody(_chunkedAccumulator.c_str(), _chunkedAccumulator.size(), true);
 			_state = REQUEST_READY;
-			_rawRequest.erase(0, endPos + 4); 
+			_rawRequest.erase(0, endPos + 4);
 			return;
 		}
 
@@ -395,10 +425,12 @@ void Connection::_handleChunkedBody() {
 		}
 
 		// 4. Safe Bounds Check (Prevents integer overflow)
-		if (_rawRequest.size() - (pos + 2) < chunkSize + 2) return;
+		if (_rawRequest.size() - (pos + 2) < chunkSize + 2)
+			return;
 
 		// 5. _handleChunkedBody
-		if (_rawRequest.substr(pos + 2 + chunkSize, 2) != CRLF) {
+		if (_rawRequest.substr(pos + 2 + chunkSize, 2) != CRLF)
+		{
 			std::cout << "[WebServ] Malformed chunk: missing trailing CRLF" << std::endl;
 			_request.setParseStatus(HTTP_Request::BAD_REQUEST);
 			_state = ERROR;
@@ -411,11 +443,14 @@ void Connection::_handleChunkedBody() {
 	}
 }
 
-bool Connection::_isValidHex(const std::string& s) const
+bool Connection::_isValidHex(const std::string &s) const
 {
-	if (s.empty()) return false;
-	for (size_t i = 0; i < s.size(); ++i) {
-		if (!std::isxdigit(static_cast<unsigned char>(s[i]))) {
+	if (s.empty())
+		return false;
+	for (size_t i = 0; i < s.size(); ++i)
+	{
+		if (!std::isxdigit(static_cast<unsigned char>(s[i])))
+		{
 			return false;
 		}
 	}

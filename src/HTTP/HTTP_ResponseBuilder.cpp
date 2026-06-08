@@ -3,14 +3,20 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP_ResponseBuilder.cpp                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/20 10:48:39 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/02 00:53:21 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/06/08 12:53:19 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "HTTP/HTTP_ResponseBuilder.hpp"
+#include "HTTP_ResponseBuilder.hpp"
+
+#include <iostream>
+#include <fstream>
+#include <map>
+#include <vector>
+#include <cstdio>
 
 HTTP_ResponseBuilder::Exception::Exception(const HTTP_StatusPair &status, const std::string &msg)
 	: _status(status), _message(msg) {}
@@ -38,35 +44,11 @@ HTTP_ResponseBuilder::~HTTP_ResponseBuilder()
 {
 }
 
-HTTP_ResponseBuilder::HTTP_ResponseBuilder(const HTTP_ResponseBuilder &other)
-{
-	if (this != &other)
-	{
-		_serverConfig = other._serverConfig;
-		_location = other._location;
-		_pathOnServer = other._pathOnServer;
-		_pathType = other._pathType;
-	}
-}
-
-HTTP_ResponseBuilder &HTTP_ResponseBuilder::operator=(const HTTP_ResponseBuilder &other)
-{
-	if (this != &other)
-	{
-		_serverConfig = other._serverConfig;
-		_location = other._location;
-		_pathOnServer = other._pathOnServer;
-		_pathType = other._pathType;
-	}
-	return (*this);
-}
-
 void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 {
-	// DEBUG - TO-DO: remove these!
-	std::cout << "++ GOT REQUEST ++" << std::endl;
-	std::cout << request.getDisplayFriendlyRequest();
-	std::cout << "++ REQUEST FIN ++" << std::endl;
+	DebugLogger(std::cout)("++ GOT REQUEST ++\n");
+	DebugLogger(std::cout)(request.getDisplayFriendlyRequest());
+	DebugLogger(std::cout)("++ REQUEST FIN ++\n");
 
 	int parseStatus = request.getParseStatus();
 
@@ -91,17 +73,13 @@ void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 	{
 		if (e.getStatus() == HTTP_Status::FOUND)
 		{
-			std::cout << "[DEBUG] HTTP_ResponseBuilder::build - location, canonicalization redirect!" << std::endl;
+			DebugLogger(std::cout)("[DEBUG] HTTP_ResponseBuilder::build - location, canonicalization redirect!")('\n');
 			HTTP_ResponseBuilder::setResponseRedirect(response, HTTP_Status::FOUND.code, e.what());
 			return;
 		}
 
 		// the only other possible exception at the moment is HTTP_Status::NOT_FOUND
-		std::cout << "[DEBUG] HTTP_ResponseBuilder::build - locationGetBestMatch:"
-				  << std::endl
-				  << "        " << e.getStatus().text << ": " << e.what()
-				  << std::endl;
-
+		DebugLogger(std::cout)("[DEBUG] HTTP_ResponseBuilder::build - locationGetBestMatch:")('\n')("        ")(e.getStatus().text)(": ")(e.what())('\n');
 		setResponse(response, HTTP_Status::NOT_FOUND);
 		return;
 	}
@@ -143,8 +121,8 @@ void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 	// would otherwise be ignored. Apply it here once the location is known.
 	{
 		size_t loc_limit = _location.client_max_body_size > 0
-			? _location.client_max_body_size
-			: _serverConfig.client_max_body_size;
+							   ? _location.client_max_body_size
+							   : _serverConfig.client_max_body_size;
 		if (loc_limit > 0 && request.getBody().length() > loc_limit)
 		{
 			setResponse(response, HTTP_Status::CONTENT_TOO_LARGE);
@@ -155,25 +133,23 @@ void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 	try
 	{
 		_pathOnServer = translateUriToPath(request);
-		std::cout << "[DEBUG] pathOnServer: " << _pathOnServer << "\n";
+		DebugLogger(std::cout)("[DEBUG] pathOnServer: ")(_pathOnServer)('\n');
 	}
 	catch (HTTP_ResponseBuilder::Exception &e)
 	{
-		std::cout << "[DEBUG] HTTP_ResponseBuilder::translateUriToPath : " << e.what() << std::endl;
+		DebugLogger(std::cout)("[DEBUG] HTTP_ResponseBuilder::translateUriToPath : ")(e.what())('\n');
 		setResponse(response, e.getStatus());
 		return;
 	}
 
 	_pathType = getPathType(_pathOnServer);
 
-	if ((_pathType == PATH_FILE || _pathType == PATH_NONE)
-		&& (method == HTTP_Method::GET || method == HTTP_Method::POST))
+	if ((_pathType == PATH_FILE || _pathType == PATH_NONE) && (method == HTTP_Method::GET || method == HTTP_Method::POST))
 	{
 		std::string ext = Utils::getExtension(_pathOnServer);
-		std::cout << "[DEBUG] Checking CGI for Path: " << _pathOnServer << std::endl;
-		std::cout << "[DEBUG] Ext extracted: [" << ext << "]" << std::endl;
-		std::cout << "[DEBUG] Is ext in map? " << (CGILauncher::forCGIResponse(_pathOnServer, _location.cgi_extensions) ? "YES" : "NO") << std::endl;
-
+		DebugLogger(std::cout)("[DEBUG] Checking CGI for Path: ")(_pathOnServer)('\n');
+		DebugLogger(std::cout)("[DEBUG] Ext extracted: [")(ext)("]\n");
+		DebugLogger(std::cout)("[DEBUG] Is ext in map? ")(CGILauncher::forCGIResponse(_pathOnServer, _location.cgi_extensions) ? "YES" : "NO")('\n');
 		if (CGILauncher::forCGIResponse(_pathOnServer, _location.cgi_extensions))
 		{
 			std::string cgi_path = CGILauncher::getCGIPath(_pathOnServer, _location.cgi_extensions);
@@ -194,27 +170,27 @@ void HTTP_ResponseBuilder::build(HTTP_Response &response, HTTP_Request &request)
 		return;
 	}
 
-	std::cout << "[DEBUG] _serverConfig.client_max_body_size --> " << _serverConfig.client_max_body_size << std::endl;
-	std::cout << "[DEBUG] _location.client_max_body_size --> " << _location.client_max_body_size << std::endl;
+	DebugLogger(std::cout)("[DEBUG] _serverConfig.client_max_body_size --> ")(_serverConfig.client_max_body_size)('\n');
+	DebugLogger(std::cout)("[DEBUG] _location.client_max_body_size --> ")(_location.client_max_body_size)('\n');
 
 	if (response.isCGIGenerated())
 	{
-		std::cout << "[DEBUG] CGI Will be used!" << std::endl;
+		DebugLogger(std::cout)("[DEBUG] CGI Will be used!\n");
 		return;
 	}
 	else if (method == HTTP_Method::GET || method == HTTP_Method::HEAD)
 	{
-		std::cout << "[DEBUG] Handling GET request! (method = " << method << ")" << std::endl;
+		DebugLogger(std::cout)("[DEBUG] Handling GET request! (method = ")(method)(")\n");
 		build_response_for_GET_or_HEAD(response, request);
 	}
 	else if (method == HTTP_Method::POST)
 	{
-		std::cout << "[DEBUG] Handling POST request!" << std::endl;
+		DebugLogger(std::cout)("[DEBUG] Handling POST request!\n");
 		build_response_for_POST(response, request);
 	}
 	else if (method == HTTP_Method::DELETE)
 	{
-		std::cout << "[DEBUG] Handling DELETE request!" << std::endl;
+		DebugLogger(std::cout)("[DEBUG] Handling DELETE request!\n");
 		build_response_for_DELETE(response, request);
 	}
 	else
@@ -283,7 +259,7 @@ void HTTP_ResponseBuilder::build_response_for_GET_or_HEAD(HTTP_Response &respons
 				response,
 				HTTP_Status::FOUND.code,
 				directoryURL + "/");
-			std::cout << "[DEBUG] +++ URL normalization" << std::endl;
+			DebugLogger(std::cout)("[DEBUG] +++ URL normalization\n");
 			return;
 		}
 
@@ -309,7 +285,7 @@ void HTTP_ResponseBuilder::build_response_for_GET_or_HEAD(HTTP_Response &respons
 				}
 				catch (std::exception &e)
 				{
-					std::cout << "[DEBUG] Unable to open file " << indexOnServer << std::endl;
+					DebugLogger(std::cout)("[DEBUG] Unable to open file ")(indexOnServer)('\n');
 					setResponse(response, HTTP_Status::FORBIDDEN);
 				}
 				return;
@@ -356,14 +332,6 @@ void HTTP_ResponseBuilder::build_response_for_POST(
 	HTTP_Response &response,
 	HTTP_Request &request)
 {
-	// DEBUGGING
-	// std::cout << "++ GOT REQUEST ++" << std::endl;
-	// std::cout << request; //.getDisplayFriendlyRequest();
-	// std::cout << "++ REQUEST FIN ++" << std::endl;
-	// std::string filename = Utils::getNextAvailableFilename("request.dat");
-	// Utils::writeStringToFile(filename, request.serialize());
-	// std::cout << "Request saved to " << filename << std::endl;
-
 	std::string filenameOnServer;
 	std::string dataToWrite;
 	std::string errorMsg = "";
@@ -379,38 +347,37 @@ void HTTP_ResponseBuilder::build_response_for_POST(
 
 	if (!errorMsg.empty())
 	{
-		std::cout << "[DEBUG] ERROR: " << errorMsg << std::endl;
+		DebugLogger(std::cout)("[DEBUG] ERROR: ")(errorMsg)('\n');
 		setResponse(response, HTTP_Status::INTERNAL_SERVER_ERROR);
 		return;
 	}
 
 	if (!request.isMultipartRequest())
 	{
-		std::cout << "[DEBUG] Request is NOT multipart!" << std::endl;
-
+		DebugLogger(std::cout)("[DEBUG] Request is NOT multipart!\n");
 		filenameOnServer = Utils::joinPath(_location.upload_path, DEFAULT_UPLOAD_FILENAME);
 		dataToWrite = Utils::urlDecode(request.getBody());
 	}
 	else
 	{
-		std::cout << "[DEBUG] Request IS multipart!" << std::endl;
+		DebugLogger(std::cout)("[DEBUG] Request IS multipart!\n");
 		if (request.populateMultipartVars() == FAILURE)
 		{
-			std::cout << "[DEBUG] ERROR reading multipart request!" << std::endl;
+			DebugLogger(std::cout)("[DEBUG] ERROR reading multipart request!\n");
 			setResponse(response, HTTP_Status::BAD_REQUEST);
 			return;
 		}
 
-		std::cout << "[DEBUG] Boundary: " << request._multipartBoundary << std::endl;
-		std::cout << "[DEBUG] Filename: " << request._multipartFilename << std::endl;
-		std::cout << "[DEBUG] Data start>>>" << request._multipartData << "<<<Data fin" << std::endl;
+		DebugLogger(std::cout)("[DEBUG] Boundary: ")(request.getMultipartBoundary())('\n');
+		DebugLogger(std::cout)("[DEBUG] Filename: ")(request.getMultipartFilename())('\n');
+		DebugLogger(std::cout)("[DEBUG] Data start>>>")(request.getMultipartData())("<<<Data fin")('\n');
 
-		filenameOnServer = Utils::joinPath(_location.upload_path, request._multipartFilename);
+		filenameOnServer = Utils::joinPath(_location.upload_path, request.getMultipartFilename());
 
 		if (filenameOnServer == _location.upload_path)
 			filenameOnServer = Utils::joinPath(_location.upload_path, DEFAULT_UPLOAD_FILENAME);
 
-		dataToWrite = request._multipartData;
+		dataToWrite = request.getMultipartData();
 	}
 
 	filenameOnServer = Utils::getNextAvailableFilename(filenameOnServer);
@@ -418,7 +385,7 @@ void HTTP_ResponseBuilder::build_response_for_POST(
 	std::ofstream fileOnServer(filenameOnServer.c_str(), std::ios::binary);
 	if (!fileOnServer.is_open())
 	{
-		std::cout << "[DEBUG] Upload error: Could not open file " << filenameOnServer << std::endl;
+		DebugLogger(std::cout)("[DEBUG] Upload error: Could not open file ")(filenameOnServer)('\n');
 		setResponse(response, HTTP_Status::INTERNAL_SERVER_ERROR);
 		return;
 	}
@@ -426,9 +393,7 @@ void HTTP_ResponseBuilder::build_response_for_POST(
 	fileOnServer.write(dataToWrite.c_str(), dataToWrite.size());
 	fileOnServer.close();
 
-	std::cout << "[INFO] Uploaded file saved to " << filenameOnServer
-			  << " (" << dataToWrite.size() << " bytes)"
-			  << std::endl;
+	DebugLogger(std::cout)("[INFO] Uploaded file saved to ")(filenameOnServer)(" (")(dataToWrite.size())(" bytes)\n");
 
 	response.setStatus(HTTP_Status::CREATED);
 	response.setContent("File upload successfull!");
@@ -482,8 +447,7 @@ const LocationConfig &HTTP_ResponseBuilder::locationGetBestMatch(
 				isValidMatch = true; // Next character is '/', so it's a clean directory boundary
 			}
 
-			// DEBUG // TO-DO: remove!!!
-			std::cout << "loc.path = " << loc_it->path << " vs reqURL = " << reqURL << " --> isValidMatch = " << isValidMatch << std::endl;
+			DebugLogger(std::cout)("[DEBUG] loc.path = ")(loc_it->path)(" vs reqURL = ")(reqURL)(" --> isValidMatch = ")(isValidMatch)('\n');
 
 			// 4. If it's a valid match, check if it's the longest one we've seen
 			if (isValidMatch)
@@ -501,7 +465,7 @@ const LocationConfig &HTTP_ResponseBuilder::locationGetBestMatch(
 		// throw std::runtime_error("No suitable server/location found for " + reqURL);
 		throw HTTP_ResponseBuilder::Exception(HTTP_Status::NOT_FOUND, reqURL);
 
-	std::cout << "[DEBUG] Best location match is: " << selectedLocation_it->path << std::endl;
+	DebugLogger(std::cout)("[DEBUG] Best location match is: ")(selectedLocation_it->path)('\n');
 	return (*selectedLocation_it);
 }
 
@@ -549,7 +513,7 @@ std::string HTTP_ResponseBuilder::translateUriToPath(const HTTP_Request &request
 		if (!replace(requestURL, _location.path, ""))
 		{
 			std::string errorMsg = "Error: HTTP_ResponseBuilder::translateUriToPath invalid request url \"" + request.getURL() + "\"\n";
-			std::cout << errorMsg;
+			DebugLogger(std::cout)(errorMsg);
 			throw(HTTP_ResponseBuilder::Exception(HTTP_Status::BAD_REQUEST, errorMsg));
 		}
 	}
@@ -597,16 +561,13 @@ ssize_t HTTP_ResponseBuilder::getClientMaxBodySize(
 	{
 		if (e.getStatus() == HTTP_Status::FOUND)
 		{
-			std::cout << "[DEBUG] HTTP_ResponseBuilder::build - location, canonicalization redirect!" << std::endl;
+			DebugLogger(std::cout)("[DEBUG] HTTP_ResponseBuilder::build - location, canonicalization redirect!")('\n');
 			HTTP_ResponseBuilder::setResponseRedirect(res, HTTP_Status::FOUND.code, e.what());
 			return (-1);
 		}
 
 		// the only other possible exception at the moment is HTTP_Status::NOT_FOUND
-		std::cout << "[DEBUG] HTTP_ResponseBuilder::build - locationGetBestMatch:"
-				  << std::endl
-				  << "        " << e.getStatus().text << ": " << e.what()
-				  << std::endl;
+		DebugLogger(std::cout)("[DEBUG] HTTP_ResponseBuilder::build - locationGetBestMatch:")('\n')("        ")(e.getStatus().text)(": ")(e.what())('\n');
 
 		HTTP_ResponseBuilder::setResponse(res, HTTP_Status::NOT_FOUND, sc);
 		return (-1);

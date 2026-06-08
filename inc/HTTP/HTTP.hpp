@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/20 21:56:26 by aistok            #+#    #+#             */
-/*   Updated: 2026/02/22 10:19:32 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/08 12:22:24 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,13 @@ public:
 	typedef HTTP_Request Request;
 	typedef HTTP_Response Response;
 	typedef HTTP_ResponseBuilder ResponseBuilder;
+
+private:
+	// Private and Unimplemented to prevent copying and class instantiation
+	HTTP();
+	~HTTP();
+	HTTP(const HTTP &other);
+	HTTP &operator=(const HTTP &other);
 };
 
 #endif // HTTP_HPP

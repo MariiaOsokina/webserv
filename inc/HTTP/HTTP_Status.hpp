@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/12 14:37:18 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/25 18:07:28 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/08 12:22:36 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -125,6 +125,12 @@ public:
 	static const HTTP_StatusPair &fromCode(int code);
 
 private:
+	// Private and Unimplemented to prevent copying and class instantiation
+	HTTP_Status();
+	~HTTP_Status();
+	HTTP_Status(const HTTP_Status &other);
+	HTTP_Status &operator=(const HTTP_Status &other);
+
 	static const HTTP_StatusPair _table[];
 	static const int _count;
 

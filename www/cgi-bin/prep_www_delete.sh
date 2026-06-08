@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo "Status: 200 OK"
+echo "Content-Type: text/html"
+echo
 echo "<br>"
 echo "Executing bash script!"
 echo "<br>"

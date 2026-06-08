@@ -1,16 +1,32 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   HTTP_Version.cpp                                   :+:      :+:    :+:   */
+/*   DebugLogger.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/02/20 21:56:26 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/06 20:50:03 by aistok           ###   ########.fr       */
+/*   Created: 2026/06/07 17:18:25 by aistok            #+#    #+#             */
+/*   Updated: 2026/06/08 12:54:03 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "HTTP_Version.hpp"
+#include "DebugLogger.hpp"
 
-const std::string HTTP_Version::v1_1 = "HTTP/1.1";
-const std::string HTTP_Version::v1_0 = "HTTP/1.0";
+#if defined(DEBUG_MODE) && DEBUG_MODE == 1
+
+DebugLogger::DebugLogger(std::ostream &os = std::cout) : _stream(os) {}
+
+DebugLogger::~DebugLogger() {}
+
+#else
+
+DebugLogger::DebugLogger(std::ostream &) {}
+
+DebugLogger::~DebugLogger() {}
+
+DebugLogger::DebugLogger() {}
+inline DebugLogger &DebugLogger::operator=(const DebugLogger &)
+{
+	return (*this);
+}
+#endif // DEBUG

@@ -6,11 +6,17 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/13 03:08:23 by aistok            #+#    #+#             */
-/*   Updated: 2026/05/13 12:39:04 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/04 18:44:40 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "Utils.hpp"
+#include "Config.hpp"
 #include "ErrorPages.hpp"
+
+#include <map>
+#include <sstream>
+#include <exception>
 
 std::string ErrorPages::_template =
 	"<!DOCTYPE html>\n"

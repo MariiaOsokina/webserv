@@ -6,7 +6,7 @@
 /*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/12 14:37:18 by aistok            #+#    #+#             */
-/*   Updated: 2026/04/09 13:27:27 by aistok           ###   ########.fr       */
+/*   Updated: 2026/06/08 12:21:30 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,6 @@
 #define HTTP_FIELDNAME_HPP
 
 #include <string>
-#include "HTTP_Defines.hpp"
 
 /*
  * Minimal set of headers in a request
@@ -83,6 +82,13 @@ public:
 	/* the below is not needed at the moment */
 	// friend class HTTP;
 	// friend class HTTP_Request;
+
+private:
+	// Private and Unimplemented to prevent copying
+	HTTP_FieldName();
+	~HTTP_FieldName();
+	HTTP_FieldName(const HTTP_FieldName &other);
+	HTTP_FieldName &operator=(const HTTP_FieldName &other);
 };
 
 #endif // HTTP_FIELDNAME_HPP

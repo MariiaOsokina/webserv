@@ -3,14 +3,21 @@
 /*                                                        :::      ::::::::   */
 /*   HTTP_Request.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/16 16:46:32 by aistok            #+#    #+#             */
-/*   Updated: 2026/06/02 00:51:16 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/06/08 12:53:26 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "HTTP/HTTP_Request.hpp"
+#include "HTTP_Request.hpp"
+
+#include <cctype>
+#include <exception>
+#include <iostream>
+#include <sstream>
+#include <stdexcept>
+#include <vector>
 
 void HTTP_Request::_init_class_vars()
 {
@@ -90,7 +97,7 @@ HTTP_Request &HTTP_Request::operator=(const HTTP_Request &other)
 }
 
 /* getline removes the '\n' from each line it reads! */
-int HTTP_Request::parseHeaders(const char *raw, size_t len) // MO:SPLIT TO parseHeaders and setBody() -> AI: appendToBody() instead of setBody() ?
+int HTTP_Request::parseHeaders(const char *raw, size_t len)
 {
 	if (!len)
 	{
@@ -216,9 +223,24 @@ bool HTTP_Request::isMultipartRequest() const
 	return (_isMultipartRequest);
 }
 
-const std::string HTTP_Request::getMultipartBoundary() const
+const std::string &HTTP_Request::getMultipartBoundary() const
 {
 	return (_multipartBoundary);
+}
+
+const std::string &HTTP_Request::getMultipartFilename() const
+{
+	return (_multipartFilename);
+}
+
+const std::string &HTTP_Request::getMultipartContentType() const
+{
+	return (_multipartContentType);
+}
+
+const std::string &HTTP_Request::getMultipartData() const
+{
+	return (_multipartData);
 }
 
 void HTTP_Request::setParseStatus(const ParseStatus status)
@@ -255,7 +277,7 @@ bool HTTP_Request::hasHeader(const std::string &fieldName) const
 void HTTP_Request::dumpToFile(const std::string &filename) const
 {
 	std::string filename_dumped_to = Utils::dumpToFile(filename, serialize());
-	std::cout << "[DEBUG] Request saved/dumped to " << filename_dumped_to << std::endl;
+	DebugLogger(std::cout)("[DEBUG] Request saved/dumped to ")(filename_dumped_to)('\n');
 }
 
 int HTTP_Request::_parseRequestLine(std::string &line)
@@ -264,7 +286,7 @@ int HTTP_Request::_parseRequestLine(std::string &line)
 	 *	getline removes '\n' (LF), so,
 	 *	only check and remove '\r' (CR).
 	 */
-	if (!removeLastPortion(line, CR))
+	if (!removeEndingPortion(line, CR))
 	{
 		_parseStatus = HTTP_Request::BAD_REQUEST;
 		return (FAILURE);
@@ -391,7 +413,7 @@ int HTTP_Request::_parseHeaderLine(std::string &line)
 	 *	getline removes '\n' (LF), so,
 	 *	only check and remove '\r' (CR).
 	 */
-	if (!removeLastPortion(line, CR))
+	if (!removeEndingPortion(line, CR))
 	{
 		_parseStatus = HTTP_Request::BAD_REQUEST;
 		return (FAILURE);
@@ -459,7 +481,7 @@ int HTTP_Request::_parseHeaderLine(std::string &line)
 HTTP_Headers HTTP_Request::_parseMultipartHeaders(const std::string &multipartHeadersStr)
 {
 	std::vector<std::string> lines = Utils::split(multipartHeadersStr, CRLF);
-	
+
 	HTTP_Headers multipartHeaders;
 	for (size_t i = 0; i < lines.size(); ++i)
 	{
@@ -532,9 +554,12 @@ int HTTP_Request::populateMultipartVars()
 	// parse headers
 	std::string headersStr = _body.substr(part_start, headers_end - part_start);
 	HTTP_Headers multipartHeaders;
-	try {
+	try
+	{
 		multipartHeaders = _parseMultipartHeaders(headersStr);
-	} catch (std::exception &e) {
+	}
+	catch (std::exception &e)
+	{
 		_parseStatus = HTTP_Request::BAD_REQUEST;
 		return (FAILURE);
 	}
@@ -552,18 +577,18 @@ int HTTP_Request::populateMultipartVars()
 	size_t content_start = headers_end + 4; // Skip \r\n\r\n
 
 	// find ending boundary
-	std::string end_delimiter = + "--" + _multipartBoundary + "--";
+	std::string end_delimiter = +"--" + _multipartBoundary + "--";
 	size_t content_end = _body.find(end_delimiter, content_start);
 	if (content_end == std::string::npos)
-		std::cout << "[DEBUG] ERROR: could not find ending boundary in multipart request body!" << std::endl;
+		DebugLogger(std::cout)("[DEBUG] ERROR: could not find ending boundary in multipart request body!\n");
 
 	if (content_end != std::string::npos)
 		_multipartData = _body.substr(content_start, content_end - content_start);
-	
+
 	// if the data ends with a CRLF, remove it
 	if (Utils::endsWith(_multipartData, CRLF))
 		_multipartData = _multipartData.erase(_multipartData.size() - 2);
-	
+
 	return (SUCCESS);
 }
 
@@ -671,17 +696,13 @@ void HTTP_Request::reset()
 
 std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr)
 {
+#if defined(DEBUG) && DEBUG == 1
 	if (hr._headers.size() == 0 && hr._body.size() == 0)
 	{
 		os << "Empty HTTP_Request object! (was just initialized or all states were reset)" << std::endl;
 		return (os);
 	}
-
-	if (DEBUG_MODE && !hr._requestLine_completed)
-	{
-		os << "[DEBUG] HTTP_Request - incomplete header line";
-		return (os);
-	}
+#endif
 
 	std::string line_start = "";
 	std::string line_ending = CRLF;
@@ -694,12 +715,6 @@ std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr)
 	os << line_start << hr._method << " " << hr._url << " " << hr._version;
 	os << line_ending;
 
-	if (DEBUG_MODE && !hr._headers_completed)
-	{
-		os << "[DEBUG] HTTP_Request - incomplete headers";
-		return (os);
-	}
-
 	HTTP_Headers::const_iterator it;
 	for (it = hr._headers.begin(); it != hr._headers.end(); ++it)
 	{
@@ -710,16 +725,6 @@ std::ostream &operator<<(std::ostream &os, const HTTP_Request &hr)
 	}
 
 	os << line_start << line_ending;
-
-	if (DEBUG_MODE && !hr._body_completed)
-	{
-		if (!hr.hasHeader(HTTP_FieldName::TRANSFER_ENCODING) &&
-			!hr.hasHeader(HTTP_FieldName::CONTENT_LENGTH))
-			os << "[DEGUB] HTTP_Request is headers only (has no body)!";
-		else
-			os << "[DEBUG] HTTP_Request - incomplete body";
-		return (os);
-	}
 
 	if (hr._body.size() > 0)
 		os << line_start;
@@ -743,12 +748,9 @@ void HTTP_Request::appendToBody(const std::string &data, size_t len, bool isFina
 	_body.append(data);
 	(void)len;
 
-	// CRITICAL for CGI: Keep the length variable in sync!
-	// _bodyLen = _body.length();
-
 	if (isFinalAppend)
 	{
 		_body_completed = true;
-		this->_parseStatus = HTTP_Request::COMPLETE; // AI: is this correct here?
+		this->_parseStatus = HTTP_Request::COMPLETE;
 	}
 }

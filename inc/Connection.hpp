@@ -3,26 +3,33 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mosokina <mosokina@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aistok <aistok@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/11 12:49:22 by mosokina          #+#    #+#             */
-/*   Updated: 2026/06/01 23:48:46 by mosokina         ###   ########.fr       */
+/*   Updated: 2026/06/06 20:48:19 by aistok           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef CONNECTION_HPP
 #define CONNECTION_HPP
 
-#include <string>
+#include "HTTP.hpp"
+#include "HTTP_Request.hpp"
+#include "HTTP_Response.hpp"
+#include "HTTP_ResponseBuilder.hpp"
+#include "Listener.hpp"
+
+#include <unistd.h>	  // close
+#include <signal.h>	  // For SIGKILL
+#include <sys/wait.h> // For waitpid
+#include <sys/types.h>
+
 #include <iostream>
-#include <unistd.h> // close
+#include <string>
 #include <ctime>
 #include <cstdlib>
-#include <signal.h>   // For SIGKILL
-#include <sys/wait.h> // For waitpid
 
-#include "Listener.hpp"
-#include "HTTP/HTTP.hpp"
+class Listener;
 
 class Connection
 {
@@ -39,18 +46,18 @@ public:
 		STREAMING_CGI,
 		ERROR
 	};
-	
+
 	void resetTimeout();
 	bool isTimedOut(time_t now, int limit) const;
-	
-	HTTP::Request &getRequest();
-	HTTP::Response &getResponse();
+
+	HTTP_Request &getRequest();
+	HTTP_Response &getResponse();
 	Listener *getServer();
 	int getState() const;
 	void setState(ConnectionState state); // <MO: new for CGI
-    std::string getRawRequest() const;
+	std::string getRawRequest() const;
 	std::string getRawResponse() const;
-	bool hasBufferedData() const ;
+	bool hasBufferedData() const;
 
 	void handleRead(const char *buffer, ssize_t bytesRead);
 	bool handleWrite();
@@ -87,13 +94,11 @@ public:
 	void markStreamAborted();
 	bool isStreamAborted() const;
 
-
 	void resetForNextRequest();
 	void setCgiPid(pid_t pid);
 	static const int MAX_HEADER_SIZE = 16384; // 16KB
 
-	bool isChunked() const; // AI: added
-
+	bool isChunked() const;
 
 private:
 	Connection(const Connection &other);
@@ -104,7 +109,7 @@ private:
 	Listener *_listener; // for getting  client_max_body_size from the server config
 
 	std::string _rawRequest;
-	std::string	_chunkedAccumulator;
+	std::string _chunkedAccumulator;
 	std::string _rawResponse;
 
 	// Streaming queue used only while _state == STREAMING_CGI. Bounded
@@ -112,28 +117,26 @@ private:
 	// gate. Erase-from-front semantics, so we never carry more than a
 	// few tens of KB per in-flight CGI response.
 	std::string _streamBuf;
-	bool _streamFinished;   // terminator queued
-	bool _streamDrained;    // buffer flushed AND _streamFinished
-	bool _streamAborted;    // post-header crash → close after drain
+	bool _streamFinished; // terminator queued
+	bool _streamDrained;  // buffer flushed AND _streamFinished
+	bool _streamAborted;  // post-header crash → close after drain
 
-	size_t	_expectedBodySize;
-    bool _isChunked;
+	size_t _expectedBodySize;
+	bool _isChunked;
 	size_t _bytesSent;
 	time_t _lastActive;
 
-	HTTP::ResponseBuilder _responseBuilder;
-	HTTP::Request _request;
-	HTTP::Response _response;
-	
-    pid_t _cgi_pid;
+	HTTP_ResponseBuilder _responseBuilder;
+	HTTP_Request _request;
+	HTTP_Response _response;
+
+	pid_t _cgi_pid;
 
 	void _handleHeaders();
 	void _setupBodyReading();
-    void _handleStandardBody();
-    void _handleChunkedBody();
-	bool _isValidHex(const std::string& s) const;
-
-
+	void _handleStandardBody();
+	void _handleChunkedBody();
+	bool _isValidHex(const std::string &s) const;
 };
 
 #endif
