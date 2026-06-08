@@ -106,24 +106,6 @@ Manual test via a web browser (we used FireFox):
 
    NOTE: we can notice .sh, .php and .py scripts being run on our server!
 
-Test a simple php only snake game in the browser, made by
-https://github.com/grisendo/snake-game-php
-
-   1. make snake_php
-
-      This will compile the webserv and clone the externa
-	  snake-game-php repository into www/snake
-
-   2. Open FireFox or Chrome and navigate to:
-
-      http://localhost:8080/snake/index.php
-
-	  Use alt + shift + {i,k,j,l} to change directions
-
-   This short game demonstrates .php is running from root (enabled
-   in the advanced.conf), and demonstrates the querystring is
-   functioning well in php.
-
 Automated test, created by Maria, to test the web server's main
 core functionality:
 
@@ -205,6 +187,9 @@ and benchmarking utility:
 
 - HTTP 1.0 RFC:
   https://datatracker.ietf.org/doc/html/rfc1945
+
+- Beej's Guide to Network Programming
+  https://share.google/JCcChRyoyI36jzHlO
 
 - The Common Gateway Interface (CGI) Version 1.1 RFC:
   https://www.rfc-editor.org/rfc/rfc3875

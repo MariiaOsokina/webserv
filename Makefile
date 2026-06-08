@@ -6,7 +6,7 @@
 #    By: aistok <aistok@student.42london.com>       +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/01/14 18:42:19 by aistok            #+#    #+#              #
-#    Updated: 2026/06/08 12:56:43 by aistok           ###   ########.fr        #
+#    Updated: 2026/06/08 20:26:39 by aistok           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -27,7 +27,6 @@ SHELL		:=	/usr/bin/bash
 
 MAKE_DB		:=	./.make_db
 MAKE_EXEC	:=	$(MAKE_DB)/.executables_ok
-MAKE_SNAKE	:=	$(MAKE_DB)/.snake_php_cloned
 MAKE_ERROR_LOG						\
 			:=	$(MAKE_DB)/error.log
 
@@ -133,28 +132,6 @@ run: all
 runtests core_tests: all
 	@/bin/bash tests/run_python_tests.sh
 
-$(MAKE_SNAKE):
-	@git clone https://github.com/grisendo/snake-game-php www/snake
-	@touch $@
-
-snake_php: all $(MAKE_SNAKE)
-	@echo
-	@echo "    SNAKE-GAME-PHP is now installed"
-	@echo
-	@echo "    If webserv is running, please navigate to:"
-	@echo "    http://localhost:8080/snake/index.php"
-	@echo
-	@echo "    Controls (in FireFox & Chrome):"
-	@echo "    alt + shift + {i,k,j,l}"
-	@echo
-
-clean_snake:
-	@if [ -e $(MAKE_SNAKE) ]; then \
-		$(RM) $(MAKE_SNAKE); \
-		$(RM) www/snake; \
-		$(call fancylog,Removing,removed,snake_php,:); \
-	fi
-
 set_executables: | $(MAKE_EXEC)
 
 $(MAKE_EXEC): EXECUTABLES_SUBSTR := $(shell EXECUTABLES="$(EXECUTABLES)"; echo "$${EXECUTABLES:0:50} ...")
@@ -167,7 +144,7 @@ clean:
 		$(call fancylog,Removing,removed,$(OBJ_DIR),$(RM) $(OBJ_DIR) || true); \
 	fi
 
-fclean: clean clean_snake
+fclean: clean
 	@if [ -d $(BIN_DIR) ]; then \
 		$(call fancylog,Removing,removed,$(BIN_DIR),$(RM) $(BIN_DIR) || true); \
 	fi
@@ -199,5 +176,4 @@ re: fclean all
 		run \
 		42config 42tester \
 		config_tester \
-		siege-basic siege-medium siege-hard siege-very-hard \
-		snake_php clean_snake
+		siege-basic siege-medium siege-hard siege-very-hard
