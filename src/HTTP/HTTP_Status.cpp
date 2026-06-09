@@ -26,7 +26,7 @@ const HTTP_StatusPair HTTP_Status::_table[] = {
 	{302, "Found"},
 	{303, "See Other"},
 	{304, "Not Modified"},
-	{307, "Internal Redirect"},
+	{307, "Temporary Redirect"},
 	{308, "Permanent Redirect"},
 
 	{400, "Bad Request"},
@@ -86,8 +86,8 @@ const HTTP_StatusPair HTTP_Status::s303 = HTTP_Status::SEE_OTHER;
 const HTTP_StatusPair HTTP_Status::NOT_MODIFIED = HTTP_Status::_table[9];
 const HTTP_StatusPair HTTP_Status::s304 = HTTP_Status::NOT_MODIFIED;
 
-const HTTP_StatusPair HTTP_Status::INTERNAL_REDIRECT = HTTP_Status::_table[10];
-const HTTP_StatusPair HTTP_Status::s307 = HTTP_Status::INTERNAL_REDIRECT;
+const HTTP_StatusPair HTTP_Status::TEMPORARY_REDIRECT = HTTP_Status::_table[10];
+const HTTP_StatusPair HTTP_Status::s307 = HTTP_Status::TEMPORARY_REDIRECT;
 
 const HTTP_StatusPair HTTP_Status::PERMANENT_REDIRECT = HTTP_Status::_table[11];
 const HTTP_StatusPair HTTP_Status::s308 = HTTP_Status::PERMANENT_REDIRECT;

@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include "WebServ.hpp"
+#include "DebugLogger.hpp"
 
 #include <netinet/in.h>
 #include <stdlib.h>
@@ -696,7 +697,7 @@ void WebServ::_handleCGIOutput(size_t *index)
 
 	char buffer[CGI_BUFFER_SIZE];
 	ssize_t bytes_read = read(cgiFd, buffer, sizeof(buffer));
-	std::cout << "[WebServ] CGI bytes read " << bytes_read << std::endl;
+	DebugLogger(std::cout)("[DEBUG] CGI bytes read ")(bytes_read)('\n');
 
 	if (bytes_read > 0)
 	{

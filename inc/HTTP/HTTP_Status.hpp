@@ -57,7 +57,7 @@ public:
 	static const HTTP_StatusPair NOT_MODIFIED;
 	static const HTTP_StatusPair s304;
 
-	static const HTTP_StatusPair INTERNAL_REDIRECT;
+	static const HTTP_StatusPair TEMPORARY_REDIRECT;
 	static const HTTP_StatusPair s307; // RFC 9110 (RFC 2616)
 
 	static const HTTP_StatusPair PERMANENT_REDIRECT;

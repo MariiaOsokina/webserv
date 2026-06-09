@@ -17,5 +17,3 @@ file_dumps/*
 
 compile_commands.json
 iwyu_output.txt
-
-www/snake
