@@ -6,7 +6,7 @@
 #    By: aistok <aistok@student.42london.com>       +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/01/14 18:42:19 by aistok            #+#    #+#              #
-#    Updated: 2026/06/08 20:26:39 by aistok           ###   ########.fr        #
+#    Updated: 2026/06/09 23:48:35 by aistok           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -69,6 +69,9 @@ SRC_FILES	:=	$(SRC_DIR)/CGI.cpp \
 
 OBJ_FILES	:=	$(subst $(SRC_DIR)/,$(OBJ_DIR)/,$(SRC_FILES:%.cpp=%.o))
 
+HPP_DEPENDENCIES \
+			:=	$(OBJ_FILES:.o=.d)
+
 DELETE_TEST_DIR \
 			:=	www/delete_test
 
@@ -101,6 +104,8 @@ $(NAME): | set_executables $(DELETE_TEST_DIR)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(INC_FILES) | $(OBJ_DIR)
 	@$(call fancylog,Compiling,compiled,$@,$(CC) $(CFLAGS) $(DFLAGS) $(INC_DIRS_FLAG) -c $< -o $@)
+
+-include $(HPP_DEPENDENCIES)
 
 $(OBJ_DIR): EXTRA_DIRS := $(OBJ_DIRS)
 $(OBJ_DIR) $(BIN_DIR) $(MAKE_DB):
